@@ -241,6 +241,7 @@ module.exports.compileCategoryGroupsData = async (categoryId, request) => new Pr
             name: user.name,
             sortableName: user.sortable_name,
             email: user.email,
+            login_id: user.login_id,
             avatarUrl: user.avatar_url
           });
         }

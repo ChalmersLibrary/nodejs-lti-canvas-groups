@@ -319,7 +319,7 @@ app.get('/csv/zoom/category/:id/:name', async(request, response, next) => {
 
                 for (const group of data.categories[0].groups) {
                     for (const user of group.users) {
-                        csvData = csvData + group.name + "," + user.email + "\r\n";
+                        csvData = csvData + group.name + "," + user.login_id + "\r\n";
                     }
                 }
 
