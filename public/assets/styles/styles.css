@@ -53,15 +53,8 @@ th {
     text-align: left;
 }
 
-table {
-    border-collapse: collapse;
-    width: 100%;
-    margin-bottom: 16px;
-}
-
-th,
-td {
-    padding: 8px;
+.table {
+    margin-bottom: 32px;
 }
 
 th {
@@ -69,7 +62,7 @@ th {
 }
 
 .button-bar {
-    margin-bottom: 32px;
+    margin-bottom: 8px;
 }
 
 .button-bar button {

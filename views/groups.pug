@@ -19,24 +19,25 @@ html(lang='en')
           each category in course.categories
             h2 #{category.name}
 
-            table
-                thead
-                tr
-                    th Group
-                    th Student
-                    th Email address
-                tbody
-
-                each group in category.groups
-                    each user in group.users
-                        tr
-                            td #{group.name}
-                            td #{user.sortableName}
-                            td #{user.email}
-
             div(class='button-bar')
                 button(type='button' class='btn btn-primary btn-sm' onclick='downloadCsv(' + category.id + ',\'' + category.name + '\');') Download CSV for Excel
                 button(type='button' class='btn btn-primary btn-sm' onclick='downloadCsvZoom(' + category.id + ',\'' + category.name + '\');') Download CSV for Zoom Breakout Rooms
+                small Note: Students with custom email (ie Gmail) are not matched automatically in Zoom
+
+            table(class='table table-sm')
+                thead
+                  tr
+                      th Group
+                      th Student
+                      th Email address
+
+                tbody
+                  each group in category.groups
+                      each user in group.users
+                          tr
+                              td #{group.name}
+                              td #{user.sortableName}
+                              td #{user.email}
 
           else
             h2 Group Tool
