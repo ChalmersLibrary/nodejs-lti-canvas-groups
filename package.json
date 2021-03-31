@@ -9,7 +9,7 @@
   },
   "engines": {
     "node": "14.15.0",
-    "npm": "6.14.0"
+    "npm": "6.14.8"
   },
   "author": "Rolf Johansson",
   "license": "MIT",
