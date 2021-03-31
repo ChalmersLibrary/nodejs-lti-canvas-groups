@@ -8,7 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "engines": {
-    "node": "14.15.0",
+    "node": "14.15.1",
     "npm": "6.14.8"
   },
   "author": "Rolf Johansson",
