@@ -1,4 +1,4 @@
 node_modules/
 sessions/
 db/token.db
-logs/logfiles/
+log/logfiles/
