@@ -42,6 +42,8 @@ available on the App Service URI shortly.
 
 `adminCanvasUserIds` comma-separated list of Canvas user ids that should have admin access. Long format id. (Optional)
 
+`debugLogging` set to "true" for some more logging from LTI, etc. (Optional)
+
 
 ## Usage
 

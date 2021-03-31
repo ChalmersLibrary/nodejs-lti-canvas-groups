@@ -8,7 +8,7 @@ html(lang='en')
     meta(name='author', content='Rolf Johansson')
     link(rel='stylesheet', href='https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css')
     link(rel='stylesheet', href='https://fonts.googleapis.com/css?family=Lato:300,400,400i,700&amp;subset=latin-ext&amp;display=swap')
-    link(rel='stylesheet', href='/assets/styles/styles.css?v=0.4')
+    link(rel='stylesheet', href='/assets/styles/styles.css?v=0.5')
     script(src='https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js')
     script(src='https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js')
     script(src='/assets/js/script.js?v=0.4')
@@ -17,7 +17,8 @@ html(lang='en')
       .row
         .col-lg-12.text-left
           each category in course.categories
-            h2 #{category.name}
+            if category.groups
+              h2 #{category.name}
 
             div(class='button-bar')
                 button(type='button' class='btn btn-primary btn-sm' onclick='downloadCsv(' + category.id + ',\'' + category.name + '\');') Download CSV for Excel
@@ -38,6 +39,10 @@ html(lang='en')
                               td #{group.name}
                               td #{user.sortableName}
                               td #{user.email}
+
+            else
+              h2 #{category.name}
+              p There are no groups in this groupset.
 
           else
             h2 Group Tool
