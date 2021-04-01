@@ -48,6 +48,11 @@ available on the App Service URI shortly.
 
 
 
+## Integrating in Canvas
+
+You must first create a Developer Key for this application, then store the values in environment variables `oauthClientId` and `oauthClientSecret`. Then, add the application as a LTI Application to Canvas. Use the XML in [conf-lti-template.xml](https://github.com/ChalmersLibrary/nodejs-lti-canvas-groups/blob/27948de93c6bd83901985bd75d1da0ac45080c81/conf-lti-template.xml) and fill out the correct Consumer Key and Secret, which you store in environment variable `ltiConsumerKeys`. The main LTI Launch point is `/launch_lti`.
+
+
 ## Usage
 
 `GET /` check the application availability and version, JSON data.
