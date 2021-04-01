@@ -44,6 +44,9 @@ available on the App Service URI shortly.
 
 `debugLogging` set to "true" for some more logging from LTI, etc. (Optional)
 
+**Important!** `WEBSITE_NODE_DEFAULT_VERSION` in Chalmers' production environment is set to **12.13.0** due to some limitations in compiling SqlLite3 modules when running higher versions of node. Not sure what this problem is and I'll look into it later.
+
+
 
 ## Usage
 
@@ -63,6 +66,11 @@ The view `loading` is a proxy web page for displaying a progress bar until next 
 This app uses `Sqlite3` for storing user's access tokens for Canvas API, once they have authorized the app in Canvas. For connecting this
 data the module `express-session` is used to set session cookies, where the data is stored in the file system. Remember that the user needs 
 to accept third-party cookies as the app is loaded inline in Canvas.
+
+
+## Logging
+
+Because of limitations with Azure file system logging we use Winston to write logs to `logs/logfiles` directory. The default is 50M logs rotated at max 10 files each.
 
 
 ## Special tricks
