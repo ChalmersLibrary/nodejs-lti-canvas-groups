@@ -1,9 +1,9 @@
 function downloadCsv(categoryId, categoryName) {
-    window.location.href = "/csv/category/" + categoryId + "/" + categoryName;
+    window.location.href = "/csv/category/" + categoryId + "/" + encodeURIComponent(categoryName);
 }
 
 function downloadCsvZoom(categoryId, categoryName) {
-    window.location.href = "/csv/zoom/category/" + categoryId + "/" + categoryName;
+    window.location.href = "/csv/zoom/category/" + categoryId + "/" + encodeURIComponent(categoryName);
 }
 
 function renderDashboard() {
