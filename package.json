@@ -1,6 +1,6 @@
 {
   "name": "nodejs-lti-canvas-groups",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Canvas LTI Application for listing and exporting groups and group members in groupsets.",
   "main": "app.js",
   "scripts": {
