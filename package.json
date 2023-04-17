@@ -7,10 +7,6 @@
     "start": "node app",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "engines": {
-    "node": "18.16.0",
-    "npm": "9.5.1"
-  },
   "author": "Rolf Johansson",
   "license": "MIT",
   "dependencies": {
