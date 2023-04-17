@@ -1,6 +1,6 @@
 {
   "name": "nodejs-lti-canvas-groups",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Canvas LTI Application for listing and exporting groups and group members in groupsets.",
   "main": "app.js",
   "scripts": {
@@ -8,8 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "engines": {
-    "node": "12.13.0",
-    "npm": "6.14.8"
+    "node": "18.16.0",
+    "npm": "9.5.1"
   },
   "author": "Rolf Johansson",
   "license": "MIT",
@@ -20,9 +20,9 @@
     "express-session": "^1.17.1",
     "helmet": "^3.23.3",
     "http-link-header": "^1.0.3",
-    "ims-lti": "^3.0.2",
+    "ims-lti": "^0.2.1",
     "node-cache": "^4.2.1",
-    "pug": "^2.0.4",
+    "pug": "^3.0.2",
     "request": "^2.88.2",
     "session-file-store": "^1.5.0",
     "sqlite3": "^4.2.0",

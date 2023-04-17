@@ -61,7 +61,8 @@ app.use("/assets", express.static(__dirname + '/public/assets'));
 app.get('/', (request, response) => {
     return response.send({
         status: 'up',
-        version: pkg.version
+        version: pkg.version,
+        node: process.version
     });
 });
 
