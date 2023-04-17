@@ -9,7 +9,7 @@ exports.upgradeDatabase = () => new Promise(async function(resolve, reject) {
 });
 
 exports.setupDatabase = () => new Promise(async function(resolve, reject) {
-    let db = new sqlite3.Database(dbPath, (error) => {
+    let db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (error) => {
         if (error) {
             log.error(error.message);
 
@@ -32,7 +32,7 @@ exports.setupDatabase = () => new Promise(async function(resolve, reject) {
 });
 
 exports.getAllClientsData = () => new Promise(async function(resolve, reject) {
-    let db = new sqlite3.Database(dbPath, (error) => {
+    let db = new sqlite3.cached.Database(dbPath, sqlite3.OPEN_READONLY, (error) => {
         if (error) {
             log.error(error.message);
             reject();
@@ -91,7 +91,7 @@ exports.getAllClientsDataMocked = () => new Promise(async function(resolve, reje
 });
 
 exports.setClientData = (userId, env, token, refresh, expires) => new Promise(function(resolve, reject) {
-    let db = new sqlite3.Database(dbPath, (error) => {
+    let db = new sqlite3.cached.Database(dbPath, sqlite3.OPEN_READWRITE, (error) => {
         if (error) {
             log.error(error.message);
             reject();
@@ -116,7 +116,7 @@ exports.setClientData = (userId, env, token, refresh, expires) => new Promise(fu
 });
 
 exports.getClientData = (userId, env) => new Promise(function(resolve, reject) {
-    let db = new sqlite3.Database(dbPath, (error) => {
+    let db = new sqlite3.cached.Database(dbPath, sqlite3.OPEN_READONLY, (error) => {
         if (error) {
             reject(error);
         }
