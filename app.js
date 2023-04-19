@@ -22,9 +22,6 @@ const adminUserIds = process.env.adminCanvasUserIds ? process.env.adminCanvasUse
 const NODE_MAJOR_VERSION = process.versions.node.split('.')[0];
 const NODE_MINOR_VERSION = process.versions.node.split('.')[1];
 
-// Setup database
-db.setupDatabase().catch(function(error) { log.error("[Main] Setting up database: " + error) });
-
 // this express server should be secured/hardened for production use
 const app = express();
 
@@ -123,6 +120,32 @@ app.get('/dashboard', async(request, response) => {
     } else {
         log.error("No session found.");
         return response.redirect('/error/code/41'); // Third-party cookies
+    }
+});
+
+app.get('/test/sqlite3', async (request, response) => {
+    if (request.session.userId && adminUserIds.length && adminUserIds.includes(request.session.userId)) {
+        const mocked_users = await db.getAllClientsDataMocked();
+
+        for (const user of mocked_users) {
+            await db.setClientData(user.user_id, user.user_env, user.api_token, user.refresh_token, user.expires_at);
+        }
+    
+        const db_single_user = await db.getClientData('abcdef_123456', 'test');
+        const db_users = await db.getAllClientsData();
+    
+        return response.send({
+            success: true,
+            users: {
+                mocked: mocked_users,
+                db: db_users,
+                single: db_single_user,
+            }
+        });    
+    }
+    else {
+        log.error("Not in admin list.");
+        return response.redirect('/error/code/42'); // Admin level needed
     }
 });
 
