@@ -1,4 +1,5 @@
 node_modules/
 sessions/
 db/token.db
+db/tokens.sqlite3
 log/logfiles/
