@@ -106,6 +106,7 @@ app.get('/dashboard', async(request, response) => {
                 statistics: {
                     name: pkg.name,
                     version: pkg.version,
+                    app_env: canvas.providerEnvironment(request),
                     node: process.version,
                     pid: process.pid,
                     ppid: process.ppid,
@@ -208,6 +209,7 @@ app.get('/error/code/:id', async(request, response) => {
         statistics: {
             name: pkg.name,
             version: pkg.version,
+            app_env: canvas.providerEnvironment(request),
             node: process.version,
             pid: process.pid,
             ppid: process.ppid,
@@ -225,6 +227,7 @@ app.get('/error/text/:text', (request, response) => {
         statistics: {
             name: pkg.name,
             version: pkg.version,
+            app_env: canvas.providerEnvironment(request),
             node: process.version,
             pid: process.pid,
             ppid: process.ppid,
@@ -248,6 +251,7 @@ app.get('/stats', async(request, response) => {
                 statistics: {
                     name: pkg.name,
                     version: pkg.version,
+                    app_env: canvas.providerEnvironment(request),
                     pid: process.pid,
                     ppid: process.ppid,
                     resourceUsage: NODE_MAJOR_VERSION >= 12 && NODE_MINOR_VERSION >= 6 ? JSON.stringify(process.resourceUsage(), null, 2) : 'Needs node 12.6',
@@ -274,6 +278,7 @@ app.get('/groups', async(request, response, next) => {
             const data = await canvas.compileGroupsData(request.session.canvasCourseId, request);
             data.statistics.name = pkg.name;
             data.statistics.version = pkg.version;
+            data.statistics.app_env = canvas.providerEnvironment(request);
 
             return response.render('groups', data);
         } catch (error) {

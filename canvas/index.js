@@ -91,7 +91,7 @@ exports.providerEnvironment = (request) => {
     const isTest = providerBaseUri.indexOf("test.in") > 0 ? true : false;
     const isBeta = providerBaseUri.indexOf("beta.in") > 0 ? true : false;
     
-    return (isTest ? 'test' : (isBeta ? 'beta' : 'production'));
+    return (isTest ? 'test' : (isBeta ? 'beta' : (providerBaseUri == '//' ? 'local_dev' : 'production')));
   }
   catch (error) {
     throw(new Error(error));
@@ -106,7 +106,7 @@ exports.providerBaseUri = (request) => {
     if (process.env.canvasBaseUri) {
       return(process.env.canvasBaseUri);
     }
-    else if (request.session.canvasApiDomain) {
+    else if (request.session && request.session.canvasApiDomain) {
       return('https://' + request.session.canvasApiDomain);
     }
     else {
