@@ -2,10 +2,14 @@
 
 const sqlite3 = require('sqlite3').verbose();
 const log = require('../log');
-const dbPath = './db/tokens.sqlite3'; // test with whole path if not working
+const path = require('path');
+const dbPath = path.resolve('./db/tokens.sqlite3');
 
 // database file
 const db = new sqlite3.Database(dbPath);
+
+log.info("Database file opened: " + dbPath);
+console.log(db);
 
 // call the setup function to create the table
 setupDatabase();
