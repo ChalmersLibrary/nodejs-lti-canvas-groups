@@ -103,11 +103,11 @@ exports.providerEnvironment = (request) => {
  */
 exports.providerBaseUri = (request) => {
   try {
-    if (request.session.canvasApiDomain) {
-      return('https://' + request.session.canvasApiDomain);
-    }
-    else if (process.env.canvasBaseUri) {
+    if (process.env.canvasBaseUri) {
       return(process.env.canvasBaseUri);
+    }
+    else if (request.session.canvasApiDomain) {
+      return('https://' + request.session.canvasApiDomain);
     }
     else {
       return('//');
@@ -123,11 +123,11 @@ exports.providerBaseUri = (request) => {
  */
 exports.apiPath = (request) => {
   try {
-    if (request.session.canvasApiDomain) {
-      return('https://' + request.session.canvasApiDomain + canvasApiPath);
-    }
-    else if (process.env.canvasBaseUri) {
+    if (process.env.canvasBaseUri) {
       return(process.env.canvasBaseUri + canvasApiPath);
+    }
+    else if (request.session.canvasApiDomain) {
+      return('https://' + request.session.canvasApiDomain + canvasApiPath);
     }
     else {
       return(canvasApiPath);
