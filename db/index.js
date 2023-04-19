@@ -100,7 +100,7 @@ async function getClientData(userId, env) {
                 
                 let tokenData = {};
     
-                if (rows) {
+                if (rows.length) {
                     tokenData.access_token = rows[0].api_token;
                     tokenData.token_type = "Bearer";
                     tokenData.refresh_token = rows[0].refresh_token;
