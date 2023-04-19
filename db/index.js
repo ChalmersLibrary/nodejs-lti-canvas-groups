@@ -7,6 +7,7 @@ const dbPath = path.resolve('./db/tokens.sqlite3');
 
 // database file
 const db = new sqlite3.Database(dbPath);
+db.run('PRAGMA journal_mode=WAL;')
 
 log.info("Database file opened: " + dbPath);
 console.log(db);
