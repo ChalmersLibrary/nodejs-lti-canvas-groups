@@ -4,15 +4,23 @@ const sqlite3 = require('sqlite3').verbose();
 const log = require('../log');
 const path = require('path');
 const dbPath = path.resolve('./db/tokens.sqlite3');
+const dbTemplatePath = path.resolve('./db/tokens_template.sqlite3');
+const fs = require('fs');
 
-// database file
+// magic for azure; if no existing db file, copy from template with journal_mode=WAL to fix cifs mount issue
+// https://stackoverflow.com/questions/53226642/sqlite3-database-is-locked-in-azure/66567897
+if (!fs.existsSync(dbPath)) {
+    fs.copyFile(dbTemplatePath, dbPath, (err) => {
+        if (err) throw err;
+        log.info('No database file, created one using template (to fix Azure cifs mount bug).');
+    });
+}
+
+// open database file
 const db = new sqlite3.Database(dbPath);
-db.run('PRAGMA journal_mode=WAL;')
-
 log.info("Database file opened: " + dbPath);
-console.log(db);
 
-// call the setup function to create the table
+// call the setup function to create the table if it doesn't exist
 setupDatabase();
 
 // function to set up the database
