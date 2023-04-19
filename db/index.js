@@ -14,10 +14,17 @@ if (!fs.existsSync(dbPath)) {
         if (err) throw err;
         log.info('No database file, created one using template (to fix Azure cifs mount bug).');
     });
+    fs.copyFile(dbTemplatePath + '-shm', dbPath + '-shm', (err) => {
+        if (err) throw err;
+    });
+    fs.copyFile(dbTemplatePath + '-wal', dbPath + '-wal', (err) => {
+        if (err) throw err;
+    });
 }
 
 // open database file
 const db = new sqlite3.Database(dbPath);
+// db.run('PRAGMA journal_mode=wal;');
 log.info("Database file opened: " + dbPath);
 
 // call the setup function to create the table if it doesn't exist
