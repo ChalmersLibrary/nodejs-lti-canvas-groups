@@ -87,13 +87,16 @@ exports.handleLaunch = (page) => function(req, res, next) {
                     const expiry = new Date(Date.parse(req.session.token.expires_at_utc));
 
                     log.info("[Session] User session exists: " + req.session.id + ", expires: " + expiry);
-
+                    
+                    if (debugLogging)
+                        log.info(JSON.stringify(req.session));
+                    
                     if (expiry > now) {
                         log.info("[Session] OAuth Token for API is OK.");
                         res.redirect('/' + page);
                     } else if (expiry < now) {
                         log.info("[Session] OAuth Token for API has expired, refreshing.");
-                        oauth.providerRefreshToken(req)
+                        await oauth.providerRefreshToken(req)
                             .then(() => {
                                 res.redirect('/' + page);
                             })
@@ -109,7 +112,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
                             });
                     } else if (expiry == now) {
                         log.info("[Session] The two dates are EXACTLY the same, believe it or not.");
-                        oauth.providerRefreshToken(req)
+                        await oauth.providerRefreshToken(req)
                             .then(() => {
                                 res.redirect('/' + page);
                             })
@@ -157,7 +160,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
 
                     if (debugLogging) {
                         log.info("[Session] Regenerated session");
-                        log.info(req.session);
+                        log.info(JSON.stringify(req.session));
                     }
                     else {
                         log.info("[Session] Regenerated session id: " + req.session.id);
@@ -166,7 +169,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
                     await db.getClientData(provider.userId, canvas.providerEnvironment(req))
                         .then(async (value) => {
                             log.info(value);
-                            
+
                             req.session.token = value;
 
                             const now = new Date();
