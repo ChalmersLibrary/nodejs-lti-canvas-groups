@@ -168,8 +168,6 @@ exports.handleLaunch = (page) => function(req, res, next) {
 
                     await db.getClientData(provider.userId, canvas.providerEnvironment(req))
                         .then(async (value) => {
-                            log.info(value);
-
                             req.session.token = value;
 
                             const now = new Date();
