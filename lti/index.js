@@ -155,10 +155,18 @@ exports.handleLaunch = (page) => function(req, res, next) {
                         req.session.canvasApiDomain = provider.body.custom_canvas_api_domain;
                     });
 
-                    log.info("[Session] Regenerated session id: " + req.session.id);
+                    if (debugLogging) {
+                        log.info("[Session] Regenerated session");
+                        log.info(req.session);
+                    }
+                    else {
+                        log.info("[Session] Regenerated session id: " + req.session.id);
+                    }
 
                     await db.getClientData(provider.userId, canvas.providerEnvironment(req))
-                        .then((value) => {
+                        .then(async (value) => {
+                            log.info(value);
+                            
                             req.session.token = value;
 
                             const now = new Date();
@@ -169,7 +177,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
                                 res.redirect('/' + page);
                             } else if (expiry < now) {
                                 log.info("[Session] OAuth Token for API has expired, refreshing.");
-                                oauth.providerRefreshToken(req)
+                                await oauth.providerRefreshToken(req)
                                     .then(() => {
                                         res.redirect('/' + page);
                                     })
@@ -185,7 +193,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
                                     });
                             } else if (expiry == now) {
                                 log.info("[Session] The two dates are EXACTLY the same, believe it or not.");
-                                oauth.providerRefreshToken(req)
+                                await oauth.providerRefreshToken(req)
                                     .then(() => {
                                         res.redirect('/' + page);
                                     })
