@@ -1,5 +1,6 @@
 'use strict';
 
+require('dotenv').config();
 const pkg = require('./package.json');
 const bodyParser = require('body-parser');
 const express = require('express');

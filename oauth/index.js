@@ -1,5 +1,6 @@
 'use strict';
 
+require('dotenv').config();
 const axios = require('axios');
 const canvas = require('../canvas');
 const log = require('../log');
