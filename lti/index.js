@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config();
+const session = require('express-session');
 const lti = require('ims-lti');
 const NodeCache = require('node-cache');
 const nodeCacheNonceStore = require('../node-cache-nonce');
@@ -81,6 +83,10 @@ exports.handleLaunch = (page) => function(req, res, next) {
                     req.session.canvasLocale = provider.body.launch_presentation_locale;
                     req.session.canvasApiDomain = provider.body.custom_canvas_api_domain;
 
+                    await req.session.save(function(err) {
+                        log.info("[LTI] Updated session id: " + req.session.id);
+                    });
+
                     log.info("[Session] Context is " + req.session.contextId + ", course id " + req.session.canvasCourseId + ", " + req.session.contextTitle);
 
                     const now = new Date();
@@ -131,39 +137,36 @@ exports.handleLaunch = (page) => function(req, res, next) {
                         res.redirect('/oauth');
                     }
                 } else {
-                    log.info("[Session] Regenerating session.");
+                    log.info("[LTI] Regenerating session...");
 
-                    await req.session.regenerate(err => {
-                        if (err) next(err);
-                        req.session.contextId = provider.context_id;
-                        req.session.contextTitle = provider.context_title;
-                        req.session.userId = provider.userId;
-                        req.session.username = provider.username;
-                        req.session.fullname = provider.body.lis_person_name_full;
-                        req.session.email = provider.body.lis_person_contact_email_primary;
-                        req.session.ltiConsumer = provider.body.tool_consumer_instance_guid;
-                        req.session.isInstructor = provider.instructor === true;
-                        req.session.isAdmin = provider.admin === true;
-                        req.session.isAlumni = provider.alumni === true;
-                        req.session.isContentDeveloper = provider.content_developer === true;
-                        req.session.isGuest = provider.guest === true;
-                        req.session.isManager = provider.manager === true;
-                        req.session.isMentor = provider.mentor === true;
-                        req.session.isObserver = provider.observer === true;
-                        req.session.isStudent = provider.student === true;
-                        req.session.canvasUserId = provider.body.custom_canvas_user_id;
-                        req.session.canvasCourseId = provider.body.custom_canvas_course_id;
-                        req.session.canvasEnrollmentState = provider.body.custom_canvas_enrollment_state;
-                        req.session.canvasLocale = provider.body.launch_presentation_locale;
-                        req.session.canvasApiDomain = provider.body.custom_canvas_api_domain;
+                    req.session.contextId = provider.context_id;
+                    req.session.contextTitle = provider.context_title;
+                    req.session.userId = provider.userId;
+                    req.session.username = provider.username;
+                    req.session.fullname = provider.body.lis_person_name_full;
+                    req.session.email = provider.body.lis_person_contact_email_primary;
+                    req.session.ltiConsumer = provider.body.tool_consumer_instance_guid;
+                    req.session.isInstructor = provider.instructor === true;
+                    req.session.isAdmin = provider.admin === true;
+                    req.session.isAlumni = provider.alumni === true;
+                    req.session.isContentDeveloper = provider.content_developer === true;
+                    req.session.isGuest = provider.guest === true;
+                    req.session.isManager = provider.manager === true;
+                    req.session.isMentor = provider.mentor === true;
+                    req.session.isObserver = provider.observer === true;
+                    req.session.isStudent = provider.student === true;
+                    req.session.canvasUserId = provider.body.custom_canvas_user_id;
+                    req.session.canvasCourseId = provider.body.custom_canvas_course_id;
+                    req.session.canvasEnrollmentState = provider.body.custom_canvas_enrollment_state;
+                    req.session.canvasLocale = provider.body.launch_presentation_locale;
+                    req.session.canvasApiDomain = provider.body.custom_canvas_api_domain;
+
+                    await req.session.save(function(err) {
+                        log.info("[LTI] Saved session id: " + req.session.id);
                     });
 
                     if (debugLogging) {
-                        log.info("[Session] Regenerated session");
                         log.info(JSON.stringify(req.session));
-                    }
-                    else {
-                        log.info("[Session] Regenerated session id: " + req.session.id);
                     }
 
                     await db.getClientData(provider.userId, canvas.providerEnvironment(req))
@@ -216,6 +219,8 @@ exports.handleLaunch = (page) => function(req, res, next) {
                         .catch((error) => {
                             log.error(error);
                             log.info("[Session] No token data in db for user_id '" + provider.userId + "', forcing OAuth flow.");
+                            console.log("Session before redirect:");
+                            console.log(req.session);
                             res.redirect('/oauth');
                         });
                 }

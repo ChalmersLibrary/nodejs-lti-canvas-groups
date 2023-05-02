@@ -41,24 +41,41 @@ app.use(session({
     store: new FileStore(fileStoreOptions),
     secret: process.env.SESSION_SECRET || 'c8Vbe1',
     name: 'ltiSession',
-    resave: false,
+    resave: true,
     saveUninitialized: false,
     rolling: true,
-    cookie: { sameSite: 'none', secure: true, httpOnly: false, maxAge: cookieMaxAge }
+    /* cookie: { sameSite: 'none', secure: process.env.NODE_ENV === "production", httpOnly: false, maxAge: cookieMaxAge } */
+    cookie: { sameSite: 'none', secure: true, maxAge: cookieMaxAge }
 }));
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.set('json spaces', 2);
-app.enable('trust proxy');
 
-// Development, in Azure it's set via XML config?
+if (process.env.NODE_ENV === "production") {
+    app.set('trust proxy', 1);
+}
+
 app.use("/assets", express.static(__dirname + '/public/assets'));
 
 app.get('/', (request, response) => {
+    console.log(request.session);
+    if (request.session && request.session.views) {
+        request.session.views++;
+    }
+    else {
+        console.log("No request session.");
+        request.session.views = 1;
+    }
+
+    console.log(request.session);
+
+    const views = request.session.views;
+
     return response.send({
         status: 'up',
+        views: views,
         version: pkg.version,
         node: process.version
     });

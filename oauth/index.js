@@ -1,17 +1,24 @@
 'use strict';
 
 require('dotenv').config();
+const session = require('express-session');
 const axios = require('axios');
 const canvas = require('../canvas');
 const log = require('../log');
 const db = require('../db');
 
-const clientRedirectUri = "https://" + process.env.WEBSITE_HOSTNAME + "/oauth/redirect";
+const clientRedirectUri = (process.env.WEBSITE_HOSTNAME == "localhost" ? "http://localhost:3000" : "https://" + process.env.WEBSITE_HOSTNAME) + "/oauth/redirect";
 const clientId = process.env.oauthClientId ? process.env.oauthClientId : "";
 const clientSecret = process.env.oauthClientSecret ? process.env.oauthClientSecret : "";
 const clientState = process.env.oauthClientState ? process.env.oauthClientState : (process.env.COMPUTERNAME ? process.env.COMPUTERNAME : "C2D7938F027A5FD7A7076CA7");
 const providerLoginUri = "/login/oauth2/auth?client_id=" + clientId + "&response_type=code&state=" + clientState + "&redirect_uri=" + clientRedirectUri;
 
+if (process.NODE_ENV == "development") {
+    log.info("clientRedirectUri " + clientRedirectUri);
+    log.info("clientId " + clientId);
+    log.info("clientState " + clientState);
+    log.info("providerLoginUri " + providerLoginUri);
+}
 
 /**
  * Returns the correct OAuth login uri. 
@@ -38,6 +45,8 @@ exports.providerRequestToken = async(request) => new Promise(function(resolve, r
     log.info("[OAuth] Request token: '" + requestCode + "', state: '" + requestState + "', error: '" + requestError + "'");
 
     if (requestCode !== 'undefined') {
+        console.log(request.session);
+
         if (request.session.userId && request.session.canvasCourseId) {
             if (requestState == clientState) {
                 log.info("[OAuth] POST to get OAuth Token (" + canvas.providerBaseUri(request) + "/login/oauth2/token)");
