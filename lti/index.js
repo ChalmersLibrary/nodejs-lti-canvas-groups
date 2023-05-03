@@ -47,33 +47,38 @@ const getSecret = (consumerKey, callback) => {
 exports.handleLaunch = (page) => function(req, res, next) {
     log.info("[HandleLaunch] Target page: " + page);
 
+    if (debugLogging)
+        log.info(JSON.stringify(req.body));
+    
     if (!req.body) {
         let err = new Error('Expected a body');
         err.status = 400;
         log.error(JSON.stringify(err));
-        return next(err);
+        next(err);
     }
 
     const consumerKey = req.body.oauth_consumer_key;
+
     if (!consumerKey) {
         let err = new Error('Expected a consumer');
         err.status = 422;
         log.error(JSON.stringify(err));
-        return next(err);
+        next(err);
     }
 
     getSecret(consumerKey, (err, consumerSecret) => {
         if (err) {
             log.error("Getting consumer key and secret, " + JSON.stringify(err));
-            return next(err);
+            next(err);
         }
 
         const provider = new lti.Provider(consumerKey, consumerSecret, nonceStore, lti.HMAC_SHA1);
 
         provider.valid_request(req, async(err, isValid) => {
             if (!isValid && err) {
+                console.log(err);
                 log.error("The LTI request is not valid, " + JSON.stringify(err));
-                return next(err);
+                next(err);
             }
             if (isValid) {
                 if (debugLogging)
@@ -230,7 +235,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
                 }
             } else {
                 log.error("[Session] The request is NOT valid.");
-                return next(err);
+                next(err);
             }
         });
     });
