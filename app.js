@@ -72,21 +72,8 @@ app.use(function (req, res, next) {
 });
 
 app.get('/', (request, response) => {
-    if (request.session && request.session.views) {
-        request.session.views++;
-    }
-    else {
-        console.log("No request session.");
-        request.session.views = 1;
-    }
-
-    log.info(JSON.stringify(request.session));
-
-    const views = request.session.views;
-
     return response.send({
         status: 'up',
-        views: views,
         version: pkg.version,
         node: process.version
     });
