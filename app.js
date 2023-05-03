@@ -7,6 +7,7 @@ const express = require('express');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
 const helmet = require('helmet');
+const cors = require('cors');
 const oauth = require('./oauth');
 const canvas = require('./canvas');
 const lti = require('./lti');
@@ -23,44 +24,56 @@ const adminUserIds = process.env.adminCanvasUserIds ? process.env.adminCanvasUse
 const NODE_MAJOR_VERSION = process.versions.node.split('.')[0];
 const NODE_MINOR_VERSION = process.versions.node.split('.')[1];
 
-// this express server should be secured/hardened for production use
 const app = express();
 
-// secure express server
 app.use(helmet({
     frameguard: false
 }));
 
-app.disable('X-Powered-By');
-
-// set view engine
-app.set('view engine', 'pug');
-
-// memory store shouldn't be used in production
-app.use(session({
-    store: new FileStore(fileStoreOptions),
-    secret: process.env.SESSION_SECRET || 'c8Vbe1',
-    name: 'ltiSession',
-    resave: true,
-    saveUninitialized: false,
-    rolling: true,
-    /* cookie: { sameSite: 'none', secure: process.env.NODE_ENV === "production", httpOnly: false, maxAge: cookieMaxAge } */
-    cookie: { sameSite: 'none', secure: true, maxAge: cookieMaxAge }
+app.use(bodyParser.urlencoded({
+    extended: false
 }));
 
-// parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: false }));
-
+app.disable('X-Powered-By');
+app.set('view engine', 'pug');
 app.set('json spaces', 2);
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const sessionOptions = {
+    store: new FileStore(fileStoreOptions),
+    name: process.env.SESSION_NAME ? process.env.SESSION_NAME : "groupTool.sid",
+    secret: process.env.SESSION_SECRET ? process.env.SESSION_SECRET : "keyboard cat fish mouse",
+    resave: false,
+    saveUninitialized: false,
+    rolling: true,
+    cookie: { maxAge: cookieMaxAge }
+};
 
 if (process.env.NODE_ENV === "production") {
     app.set('trust proxy', 1);
+    sessionOptions.cookie.secure = true;
+    sessionOptions.cookie.sameSite = 'none';
 }
+
+app.use(session(sessionOptions));
 
 app.use("/assets", express.static(__dirname + '/public/assets'));
 
+// Content Security Policy Header
+app.use(function (req, res, next) {
+    res.setHeader(
+      'Content-Security-Policy', 
+      "default-src 'self'; script-src 'self' cdn.jsdelivr.net unpkg.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com; font-src 'self' cdn.jsdelivr.net fonts.gstatic.com; img-src 'self' data:; frame-src 'self'" + (process.env.CSP_FRAME_SRC_ALLOW ? " " + process.env.CSP_FRAME_SRC_ALLOW : "")
+    );
+    
+    next();
+});
+
 app.get('/', (request, response) => {
     console.log(request.session);
+    log.debug("This is debug logging.");
     if (request.session && request.session.views) {
         request.session.views++;
     }
