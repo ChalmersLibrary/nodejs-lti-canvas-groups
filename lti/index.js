@@ -50,7 +50,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
     if (!req.body) {
         let err = new Error('Expected a body');
         err.status = 400;
-        log.error(err);
+        log.error(JSON.stringify(err));
         return next(err);
     }
 
@@ -58,12 +58,13 @@ exports.handleLaunch = (page) => function(req, res, next) {
     if (!consumerKey) {
         let err = new Error('Expected a consumer');
         err.status = 422;
-        log.error(err);
+        log.error(JSON.stringify(err));
         return next(err);
     }
 
     getSecret(consumerKey, (err, consumerSecret) => {
         if (err) {
+            log.error("Getting consumer key and secret, " + JSON.stringify(err));
             return next(err);
         }
 
@@ -71,6 +72,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
 
         provider.valid_request(req, async(err, isValid) => {
             if (err) {
+                log.error("The LTI request is not valid, " + JSON.stringify(err));
                 return next(err);
             }
             if (isValid) {
