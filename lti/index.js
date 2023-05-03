@@ -71,7 +71,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
             next(err);
         }
 
-        const provider = new lti.Provider(consumerKey, consumerSecret, nonceStore, lti.HMAC_SHA1);
+        const provider = new lti.Provider(consumerKey, consumerSecret);
 
         provider.valid_request(req, (err, isValid) => {
             if (!isValid && err) {
