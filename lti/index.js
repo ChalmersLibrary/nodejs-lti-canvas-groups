@@ -71,12 +71,18 @@ exports.handleLaunch = (page) => function(req, res, next) {
             next(err);
         }
 
+        if (debugLogging)
+            log.info(consumerKey + "," + consumerSecret);
+        
         const provider = new lti.Provider(consumerKey, consumerSecret);
+
+        if (debugLogging)
+            console.log(provider);
 
         provider.valid_request(req, (err, isValid) => {
             if (!isValid && err) {
                 console.log(err);
-                log.error(`The LTI request is not valid, ${err} ${typeof(err)}`);
+                log.error("The LTI request is not valid");
                 next(err);
             }
             if (isValid) {
