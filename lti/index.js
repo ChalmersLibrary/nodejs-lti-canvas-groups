@@ -76,7 +76,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
         provider.valid_request(req, (err, isValid) => {
             if (!isValid && err) {
                 console.log(err);
-                log.error("The LTI request is not valid, " + err);
+                log.error(`The LTI request is not valid, ${err} ${typeof(err)}`);
                 next(err);
             }
             if (isValid) {
@@ -233,7 +233,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
                         });
                 }
             } else {
-                log.error("[Session] The request is NOT valid, " + err);
+                log.error("[Session] The request is NOT valid");
                 next(err);
             }
         });
