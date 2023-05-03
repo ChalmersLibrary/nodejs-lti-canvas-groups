@@ -71,9 +71,6 @@ exports.handleLaunch = (page) => function(req, res, next) {
             next(err);
         }
 
-        if (debugLogging)
-            log.info(consumerKey + "," + consumerSecret);
-        
         const provider = new lti.Provider(consumerKey, consumerSecret);
 
         if (debugLogging)
