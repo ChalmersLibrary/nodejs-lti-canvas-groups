@@ -1,5 +1,6 @@
 'use strict';
 
+require('dotenv').config();
 const winston = require('winston');
 const path = require('path');
 
@@ -38,7 +39,7 @@ const logger = winston.createLogger({
     ]
 });
 
-const globalDebugMode = false;
+const globalDebugMode = process.env.NODE_ENV === "development";
 
 exports.info = async (msg) => new Promise(async function (resolve, reject) {
     try {
