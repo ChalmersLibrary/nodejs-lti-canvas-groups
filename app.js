@@ -72,8 +72,6 @@ app.use(function (req, res, next) {
 });
 
 app.get('/', (request, response) => {
-    console.log(request.session);
-    log.debug("This is debug logging.");
     if (request.session && request.session.views) {
         request.session.views++;
     }
@@ -82,7 +80,7 @@ app.get('/', (request, response) => {
         request.session.views = 1;
     }
 
-    console.log(request.session);
+    log.info(JSON.stringify(request.session));
 
     const views = request.session.views;
 

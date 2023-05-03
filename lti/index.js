@@ -50,6 +50,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
     if (!req.body) {
         let err = new Error('Expected a body');
         err.status = 400;
+        log.error(err);
         return next(err);
     }
 
@@ -57,6 +58,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
     if (!consumerKey) {
         let err = new Error('Expected a consumer');
         err.status = 422;
+        log.error(err);
         return next(err);
     }
 
