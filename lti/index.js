@@ -1,7 +1,6 @@
 'use strict';
 
 require('dotenv').config();
-const session = require('express-session');
 const lti = require('ims-lti');
 const NodeCache = require('node-cache');
 const nodeCacheNonceStore = require('../node-cache-nonce');
@@ -77,7 +76,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
         provider.valid_request(req, async(err, isValid) => {
             if (!isValid && err) {
                 console.log(err);
-                log.error("The LTI request is not valid, " + JSON.stringify(err));
+                log.error("The LTI request is not valid, " + err);
                 next(err);
             }
             if (isValid) {
@@ -234,7 +233,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
                         });
                 }
             } else {
-                log.error("[Session] The request is NOT valid.");
+                log.error("[Session] The request is NOT valid, " + err);
                 next(err);
             }
         });
