@@ -71,7 +71,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
         const provider = new lti.Provider(consumerKey, consumerSecret, nonceStore, lti.HMAC_SHA1);
 
         provider.valid_request(req, async(err, isValid) => {
-            if (err) {
+            if (!isValid && err) {
                 log.error("The LTI request is not valid, " + JSON.stringify(err));
                 return next(err);
             }
