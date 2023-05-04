@@ -296,6 +296,7 @@ app.get('/groups', async(request, response, next) => {
             data.statistics.version = pkg.version;
             data.statistics.node = process.version;
             data.statistics.app_env = canvas.providerEnvironment(request);
+            data.user.isAdmin = adminUserIds.length && adminUserIds.includes(request.session.userId);
 
             return response.render('groups', data);
         } catch (error) {
