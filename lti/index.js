@@ -1,6 +1,7 @@
 'use strict';
 
 require('dotenv').config();
+const fs = require('fs');
 const lti = require('ims-lti');
 const NodeCache = require('node-cache');
 const nodeCacheNonceStore = require('../node-cache-nonce');
@@ -18,6 +19,17 @@ const nonceStore = new nodeCacheNonceStore(myCache);
 const consumerKeys = process.env.ltiConsumerKeys;
 const debugLogging = process.env.debugLogging == "true" ? true : false;
 var secrets = [];
+let developmentLtiData;
+
+if (process.env.NODE_ENV === 'development') {
+    try {
+        const data = fs.readFileSync('mock-lti.json', 'utf8');
+        developmentLtiData = data;
+    }
+    catch (err) {
+        log.error(err);
+    }
+}
 
 const getSecret = (consumerKey, callback) => {
     if (consumerKeys && secrets.length == 0) {
@@ -42,6 +54,53 @@ const getSecret = (consumerKey, callback) => {
 
     return callback(err);
 };
+
+exports.mockLocalSession = (page, req, res, next) => {
+    if (process.env.NODE_ENV === 'development' && developmentLtiData) {
+        const mockedLti = JSON.parse(developmentLtiData);
+        req.session.contextId = mockedLti.context_id;
+        req.session.contextTitle = mockedLti.context_title;
+        req.session.userId = mockedLti.user_id;
+        req.session.fullname = mockedLti.lis_person_name_full;
+        req.session.canvasUserId = mockedLti.custom_canvas_user_id;
+        req.session.canvasCourseId = mockedLti.custom_canvas_course_id;
+        req.session.canvasEnrollmentState = mockedLti.custom_canvas_enrollment_state;
+        req.session.canvasApiDomain = mockedLti.custom_canvas_api_domain;
+        req.session.token = {};
+        
+        log.info("Mocked up local session from development LTI data:");
+        log.info(JSON.stringify(req.session));
+
+        db.getClientData(req.session.userId, canvas.providerEnvironment(req))
+        .then(async (value) => {
+            req.session.token = value;
+
+            const now = new Date();
+            const expiry = new Date(Date.parse(req.session.token.expires_at_utc));
+
+            if (expiry > now) {
+                log.info("[Mockup] OAuth Token for API is OK.");
+                resolve();
+            }
+            else if (expiry <= now) {
+                log.info("[Mockup] OAuth Token for API has expired, refreshing.");
+                await oauth.providerRefreshToken(req)
+                    .catch((error) => {
+                        log.error(error);
+                    });
+            }
+            else {
+                log.info("[Mockup] No OAuth Token for API, forcing OAuth flow.");
+            }
+        })
+        .catch((error) => {
+            log.error(error);
+            log.info("[Mockup] No token data in db for user_id '" + req.session.userId + "', forcing OAuth flow.");
+        });
+
+        throw new Error('oauth');
+    }
+}
 
 exports.handleLaunch = (page) => function(req, res, next) {
     log.info("[HandleLaunch] Target page: " + page);
