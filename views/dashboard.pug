@@ -46,3 +46,11 @@ html(lang='en')
       .row
         .col-sm-12
           canvas#chartContainer(width='100%')
+      .row
+              .col-lg-12.text-left
+        hr
+        
+        p
+          small #{statistics.name} #{statistics.version} #{statistics.app_env} Node #{statistics.node} <!-- render time #{statistics.running_s}s, #{statistics.running_ms}ms. -->
+          small a(href='/groups') View group for this course
+          
