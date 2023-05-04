@@ -19,7 +19,7 @@ const port = process.env.PORT || 3000;
 const cookieMaxAge = 3600000 * 12; // 12h
 const fileStoreOptions = { ttl: 3600 * 12, retries: 3, logFn: log.info };
 
-const adminUserIds = process.env.adminCanvasUserIds ? process.env.adminCanvasUserIds.split(",") : "";
+const adminUserIds = process.env.adminCanvasUserIds ? process.env.adminCanvasUserIds.split(",") : [];
 
 const NODE_MAJOR_VERSION = process.versions.node.split('.')[0];
 const NODE_MINOR_VERSION = process.versions.node.split('.')[1];
@@ -48,13 +48,12 @@ const sessionOptions = {
     resave: false,
     saveUninitialized: false,
     rolling: true,
-    cookie: { maxAge: cookieMaxAge }
+    cookie: { maxAge: cookieMaxAge, sameSite: 'none' }
 };
 
 if (process.env.NODE_ENV === "production") {
     app.set('trust proxy', 1);
     sessionOptions.cookie.secure = true;
-    sessionOptions.cookie.sameSite = 'none';
 }
 
 app.use(session(sessionOptions));
