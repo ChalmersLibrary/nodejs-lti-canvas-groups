@@ -64,7 +64,7 @@ app.use("/assets", express.static(__dirname + '/public/assets'));
 app.use(function (req, res, next) {
     res.setHeader(
       'Content-Security-Policy', 
-      "default-src 'self'; script-src 'self' cdn.jsdelivr.net maxcdn.bootstrapcdn.com ajax.googleapis.com unpkg.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net maxcdn.bootstrapcdn.com fonts.googleapis.com; font-src 'self' cdn.jsdelivr.net fonts.gstatic.com fonts.googleapis.com; img-src 'self' data:; frame-src 'self'" + (process.env.CSP_FRAME_SRC_ALLOW ? " " + process.env.CSP_FRAME_SRC_ALLOW : "")
+      "default-src 'self'; script-src 'self' canvasjs.com cdn.jsdelivr.net maxcdn.bootstrapcdn.com ajax.googleapis.com unpkg.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net maxcdn.bootstrapcdn.com fonts.googleapis.com; font-src 'self' cdn.jsdelivr.net fonts.gstatic.com fonts.googleapis.com; img-src 'self' data:; frame-src 'self'" + (process.env.CSP_FRAME_SRC_ALLOW ? " " + process.env.CSP_FRAME_SRC_ALLOW : "")
     );
     
     next();
