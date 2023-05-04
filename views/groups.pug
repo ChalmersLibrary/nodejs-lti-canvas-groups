@@ -55,5 +55,6 @@ html(lang='en')
           p
             small #{statistics.name} #{statistics.version} #{statistics.app_env} Node #{statistics.node} <!-- render time #{statistics.running_s}s, #{statistics.running_ms}ms. -->
             if user.isAdmin
-              small a(href='/dashboard') View admin dashboard
+              small 
+                a(href='/dashboard') View admin dashboard
               
