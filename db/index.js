@@ -12,7 +12,7 @@ const fs = require('fs');
 if (!fs.existsSync(dbPath)) {
     fs.copyFile(dbTemplatePath, dbPath, (err) => {
         if (err) throw err;
-        log.info('No database file, created one using template (to fix Azure cifs mount bug).');
+        log.info('[DB] No database file, created one using template (to fix Azure cifs mount bug).');
     });
     fs.copyFile(dbTemplatePath + '-shm', dbPath + '-shm', (err) => {
         if (err) throw err;
@@ -25,7 +25,7 @@ if (!fs.existsSync(dbPath)) {
 // open database file
 const db = new sqlite3.Database(dbPath);
 // db.run('PRAGMA journal_mode=wal;');
-log.info("Database file opened: " + dbPath);
+log.info("[DB] Database file opened: " + dbPath);
 
 // call the setup function to create the table if it doesn't exist
 setupDatabase();

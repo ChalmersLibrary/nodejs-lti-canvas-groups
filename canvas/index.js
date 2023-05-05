@@ -1,5 +1,6 @@
 'use strict';
 
+require('dotenv').config();
 const LinkHeader = require('http-link-header');
 const NodeCache = require('node-cache');
 const axios = require('axios');
@@ -9,9 +10,11 @@ const log = require('../log');
 /* This module handles communication between LTI Application and Canvas, using Canvas API V1. */
 
 const canvasApiPath = "/api/v1";
-const CACHE_TTL = (parseInt(process.env.canvasApiCacheSecondsTTL) > 0 ? parseInt(process.env.canvasApiCacheSecondsTTL) : 180);
-const CACHE_CHECK_EXPIRE = 200;
+const CACHE_TTL = (parseInt(process.env.canvasApiCacheSecondsTTL) > 0 ? parseInt(process.env.canvasApiCacheSecondsTTL) : 900);
+const CACHE_CHECK_EXPIRE = 600;
 const API_PER_PAGE = 50;
+
+log.info("[CanvasApi] Cache TTL: " + CACHE_TTL);
 
 /* Cache the results of API calls for a shorter period, to ease the load on API servers */
 /* and make load time bearable for the user.                                            */
