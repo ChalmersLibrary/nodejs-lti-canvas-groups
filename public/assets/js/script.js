@@ -65,9 +65,7 @@ function renderDashboard() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    console.log(document.location.pathname);
     if (document.location.pathname.startsWith("/loading")) {
-        console.log("Loading...");
         setInterval(function () {
             var progress = document.getElementsByTagName('progress')[0];
             if (progress.value < progress.max) {
@@ -76,17 +74,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 900);
     }
     else if (document.location.pathname.startsWith("/groups")) {
-        console.log("Groups loaded.");
         const btnDownloadCsv = document.getElementById("button-csv");
         const btnDownloadCsvZoom = document.getElementById("button-csv-zoom");
 
         btnDownloadCsv.addEventListener("click", function () {
-            console.log("btnDownloadCsv data-category-id " + btnDownloadCsv.getAttribute("data-category-id") + " data-category-name " + btnDownloadCsv.getAttribute("data-category-name"));
             downloadCsv(btnDownloadCsv.getAttribute("data-category-id"), btnDownloadCsv.getAttribute("data-category-name"));
         });
         btnDownloadCsvZoom.addEventListener("click", function () {
-            console.log("btnDownloadCsvZoom data-category-id " + btnDownloadCsv.getAttribute("data-category-id") + " data-category-name " + btnDownloadCsv.getAttribute("data-category-name"));
-            downloadCsv(btnDownloadCsvZoom.getAttribute("data-category-id"), btnDownloadCsvZoom.getAttribute("data-category-name"));
+            downloadCsvZoom(btnDownloadCsvZoom.getAttribute("data-category-id"), btnDownloadCsvZoom.getAttribute("data-category-name"));
         });
     }
     else if (document.location.pathname.startsWith("/dashboard")) {
