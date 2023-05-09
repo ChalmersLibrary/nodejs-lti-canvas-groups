@@ -74,14 +74,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 900);
     }
     else if (document.location.pathname.startsWith("/groups")) {
-        const btnDownloadCsv = document.getElementById("button-csv");
-        const btnDownloadCsvZoom = document.getElementById("button-csv-zoom");
-
-        btnDownloadCsv.addEventListener("click", function () {
-            downloadCsv(btnDownloadCsv.getAttribute("data-category-id"), btnDownloadCsv.getAttribute("data-category-name"));
+        const btnCsv = document.getElementsByClassName("btn-download-csv");
+        const btnCsvZoom = document.getElementsByClassName("btn-download-csv-zoom");
+        Array.from(btnCsv).forEach(element => {
+            element.addEventListener("click", function () {
+                downloadCsv(element.getAttribute("data-category-id"), element.getAttribute("data-category-name"));
+            }); 
         });
-        btnDownloadCsvZoom.addEventListener("click", function () {
-            downloadCsvZoom(btnDownloadCsvZoom.getAttribute("data-category-id"), btnDownloadCsvZoom.getAttribute("data-category-name"));
+        Array.from(btnCsvZoom).forEach(element => {
+            element.addEventListener("click", function () {
+                downloadCsvZoom(element.getAttribute("data-category-id"), element.getAttribute("data-category-name"));
+            });
         });
     }
     else if (document.location.pathname.startsWith("/dashboard")) {

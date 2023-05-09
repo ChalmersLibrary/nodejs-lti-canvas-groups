@@ -21,8 +21,8 @@ html(lang='en')
               h2 #{category.name}
 
               div(class='button-bar')
-                  button(type='button' id='button-csv' data-category-id=category.id data-category-name=category.name class='btn btn-primary btn-sm') Download CSV for Excel
-                  button(type='button' id='button-csv-zoom' data-category-id=category.id data-category-name=category.name class='btn btn-primary btn-sm') Download CSV for Zoom Breakout Rooms
+                  button(type='button' class='btn btn-primary btn-sm btn-download-csv' data-category-id=category.id data-category-name=category.name) Download CSV for Excel
+                  button(type='button' class='btn btn-primary btn-sm btn-download-csv-zoom' data-category-id=category.id data-category-name=category.name) Download CSV for Zoom Breakout Rooms
                   small Note: Students with custom email (ie Gmail) are not matched automatically in Zoom
 
               table(class='table table-sm')
