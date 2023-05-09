@@ -64,8 +64,10 @@ function renderDashboard() {
     }
 }
 
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function () {
+    console.log(document.location.href);
     if (document.location.href.startsWith("/loading")) {
+        console.log("Loading...");
         setInterval(function () {
             var progress = document.getElementsByTagName('progress')[0];
             if (progress.value < progress.max) {
@@ -74,11 +76,18 @@ $(document).ready(function() {
         }, 900);
     }
     else if (document.location.href.startsWith("/groups")) {
+        console.log("Groups loaded.");
         const btnDownloadCsv = document.getElementById("button-csv");
         const btnDownloadCsvZoom = document.getElementById("button-csv-zoom");
 
-        btnDownloadCsv.addEventListener("click", downloadCsv(btnDownloadCsv.getAttribute("data-category-id"), btnDownloadCsv.getAttribute("data-category-name")));
-        btnDownloadCsvZoom.addEventListener("click", downloadCsv(btnDownloadCsvZoom.getAttribute("data-category-id"), btnDownloadCsvZoom.getAttribute("data-category-name")));
+        btnDownloadCsv.addEventListener("click", function () {
+            console.log("btnDownloadCsv data-category-id " + btnDownloadCsv.getAttribute("data-category-id") + " data-category-name " + btnDownloadCsv.getAttribute("data-category-name"));
+            downloadCsv(btnDownloadCsv.getAttribute("data-category-id"), btnDownloadCsv.getAttribute("data-category-name"));
+        });
+        btnDownloadCsvZoom.addEventListener("click", function () {
+            console.log("btnDownloadCsvZoom data-category-id " + btnDownloadCsv.getAttribute("data-category-id") + " data-category-name " + btnDownloadCsv.getAttribute("data-category-name"));
+            downloadCsv(btnDownloadCsvZoom.getAttribute("data-category-id"), btnDownloadCsvZoom.getAttribute("data-category-name"));
+        });
     }
     else if (document.location.href.startsWith("/dashboard")) {
         renderDashboard();
