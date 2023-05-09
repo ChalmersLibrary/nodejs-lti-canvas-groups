@@ -65,8 +65,8 @@ function renderDashboard() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    console.log(document.location.href);
-    if (document.location.href.startsWith("/loading")) {
+    console.log(document.location.pathname);
+    if (document.location.pathname.startsWith("/loading")) {
         console.log("Loading...");
         setInterval(function () {
             var progress = document.getElementsByTagName('progress')[0];
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }, 900);
     }
-    else if (document.location.href.startsWith("/groups")) {
+    else if (document.location.pathname.startsWith("/groups")) {
         console.log("Groups loaded.");
         const btnDownloadCsv = document.getElementById("button-csv");
         const btnDownloadCsvZoom = document.getElementById("button-csv-zoom");
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function () {
             downloadCsv(btnDownloadCsvZoom.getAttribute("data-category-id"), btnDownloadCsvZoom.getAttribute("data-category-name"));
         });
     }
-    else if (document.location.href.startsWith("/dashboard")) {
+    else if (document.location.pathname.startsWith("/dashboard")) {
         renderDashboard();
         setInterval(renderDashboard, 600000); // Every 10 mins
     }
