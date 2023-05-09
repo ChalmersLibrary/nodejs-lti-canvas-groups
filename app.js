@@ -70,6 +70,14 @@ app.use(function (req, res, next) {
     next();
 });
 
+// Mock local session
+app.use(function (req, res, next) {
+    if (process.env.NODE_ENV === 'development' && process.env.localCanvasDeveloperToken) {
+        lti.mockLocalSession(req, res, next);
+        next();
+    }
+});
+
 app.get('/', (request, response) => {
     return response.send({
         status: 'up',
@@ -288,7 +296,7 @@ app.get('/loading/:page', async(request, response) => {
     return response.render('loading', { page: request.params.page });
 });
 
-app.get('/groups', async(request, response, next) => {
+app.get('/groups', async (request, response, next) => {
     if (request.session.userId && request.session.canvasCourseId) {
         try {
             const data = await canvas.compileGroupsData(request.session.canvasCourseId, request);
