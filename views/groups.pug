@@ -11,7 +11,7 @@ html(lang='en')
     link(rel='stylesheet', href='/assets/styles/styles.css?v=1.4')
     script(src='https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js')
     script(src='https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js')
-    script(src='/assets/js/script.js?v=1.4.2')
+    script(src='/assets/js/script.js?v=1.4.2.1')
   body
     .container-fluid
       .row
@@ -21,8 +21,8 @@ html(lang='en')
               h2 #{category.name}
 
               div(class='button-bar')
-                  button(type='button' class='btn btn-primary btn-sm' onclick='downloadCsv(' + category.id + ',\'' + category.name + '\');') Download CSV for Excel
-                  button(type='button' class='btn btn-primary btn-sm' onclick='downloadCsvZoom(' + category.id + ',\'' + category.name + '\');') Download CSV for Zoom Breakout Rooms
+                  button(type='button' id='button-csv' data-category-id='#{category.id}' data-category-name='#{category.name}' class='btn btn-primary btn-sm') Download CSV for Excel
+                  button(type='button' id='button-csv-zoom' data-category-id='#{category.id}' data-category-name='#{category.name}' class='btn btn-primary btn-sm') Download CSV for Zoom Breakout Rooms
                   small Note: Students with custom email (ie Gmail) are not matched automatically in Zoom
 
               table(class='table table-sm')

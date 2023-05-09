@@ -65,8 +65,23 @@ function renderDashboard() {
 }
 
 $(document).ready(function() {
-    if (document.location.href.indexOf("/dashboard") > -1) {
-        renderDashboard()
+    if (document.location.href.startsWith("/loading")) {
+        setInterval(function () {
+            var progress = document.getElementsByTagName('progress')[0];
+            if (progress.value < progress.max) {
+                progress.value > 30 && progress.value < 60 ? progress.value += 3 : progress.value += 1;
+            }
+        }, 900);
+    }
+    else if (document.location.href.startsWith("/groups")) {
+        const btnDownloadCsv = document.getElementById("button-csv");
+        const btnDownloadCsvZoom = document.getElementById("button-csv-zoom");
+
+        btnDownloadCsv.addEventListener("click", downloadCsv(btnDownloadCsv.getAttribute("data-category-id"), btnDownloadCsv.getAttribute("data-category-name")));
+        btnDownloadCsvZoom.addEventListener("click", downloadCsv(btnDownloadCsvZoom.getAttribute("data-category-id"), btnDownloadCsvZoom.getAttribute("data-category-name")));
+    }
+    else if (document.location.href.startsWith("/dashboard")) {
+        renderDashboard();
         setInterval(renderDashboard, 600000); // Every 10 mins
     }
 });

@@ -11,7 +11,7 @@ html(lang='en')
     link(rel='stylesheet', href='/assets/styles/styles.css?v=1.4')
     script(src='https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js')
     script(src='https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js')
-    script(src='/assets/js/script.js?v=1.4.2')
+    script(src='/assets/js/script.js?v=1.4.2.1')
     unless page == 'stop'
         meta(http-equiv='refresh', content='0;url=/' + page)
   body
@@ -20,5 +20,3 @@ html(lang='en')
         .col-lg-12.text-left
             h3 Loading data from Canvas API...
             progress(max='100', value='10')
-            script.
-                setInterval(function() { var progress = document.getElementsByTagName('progress')[0]; if (progress.value < progress.max) { progress.value > 30 && progress.value < 60 ? progress.value += 3 : progress.value += 1; } }, 900);
