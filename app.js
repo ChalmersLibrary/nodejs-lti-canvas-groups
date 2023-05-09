@@ -74,8 +74,8 @@ app.use(function (req, res, next) {
 app.use(function (req, res, next) {
     if (process.env.NODE_ENV === 'development' && process.env.localCanvasDeveloperToken) {
         lti.mockLocalSession(req, res, next);
-        next();
     }
+    next();
 });
 
 app.get('/', (request, response) => {
