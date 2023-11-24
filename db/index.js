@@ -41,6 +41,14 @@ async function setupDatabase() {
         resolve();
       });
     });
+    db.serialize(() => {
+        db.run('CREATE TABLE IF NOT EXISTS self_signup_config (canvas_course_id INTEGER NOT NULL, group_category_id INTEGER NOT NULL, assignment_id INTEGER NOT NULL, description TEXT, min_points INTEGER NOT NULL, created_at DATETIME NOT NULL DEFAULT current_timestamp, PRIMARY KEY (canvas_course_id, group_category_id))', (err) => {
+            if (err) reject(err);
+            
+        log.info("[DB] Database table 'self_signup_config' ready.");
+        resolve();
+      });
+    });
   });
 }
 
@@ -134,9 +142,71 @@ async function getClientData(userId, env) {
     });
 }
 
+async function setSelfSignupConfig(courseId, groupCategoryId, assignmentId, comment, minPoints, env) {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+          const stmt = db.prepare('INSERT OR REPLACE INTO self_signup_config (canvas_course_id, group_category_id, assignment_id, description, min_points) VALUES (?, ?, ?, ?, ?)');
+          stmt.run(courseId, groupCategoryId, assignmentId, comment, minPoints, (err) => {
+            if (err) reject(err);
+            
+            log.info("[DB] Created/replaced self_signup_config data for course_id '" + courseId + "', assignment_id '" + assignmentId + "'");
+            resolve();
+          });
+          stmt.finalize();
+        });
+    });
+}
+
+async function getSelfSignupConfig(courseId, groupCategoryId) {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            db.all('SELECT DISTINCT canvas_course_id, group_category_id, assignment_id, description, min_points, created_at FROM self_signup_config WHERE canvas_course_id = ? AND group_category_id = ?', [courseId, groupCategoryId], (err, rows) => {
+                if (err) reject(err);
+                
+                let configData = {};
+
+                if (rows) {
+                    resolve(rows[0]);
+                }
+                else {
+                    log.info("[DB] No data in db for courseId '" + courseId + "', groupCategoryId '" + groupCategoryId + "'");
+
+                    reject('No data');
+                }
+            });
+        });
+    });
+}
+
+async function getSelfSignupConnectedAssignments(courseId) {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            db.all('SELECT DISTINCT canvas_course_id, group_category_id, assignment_id, min_points, description FROM self_signup_config WHERE canvas_course_id = ?', [courseId], (err, rows) => {
+                if (err) reject(err);
+                resolve(rows);
+            });
+        });
+    });
+}
+
+async function clearSelfSignupConfig(courseId, groupCategoryId) {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            db.all('DELETE FROM self_signup_config WHERE canvas_course_id = ? AND group_category_id = ?', [courseId, groupCategoryId], (err, rows) => {
+                if (err) reject(err);
+                resolve();
+            });
+        });
+    });
+}
+
 module.exports = {
     getAllClientsDataMocked,
     getAllClientsData,
     setClientData,
     getClientData,
+    setSelfSignupConfig,
+    getSelfSignupConfig,
+    getSelfSignupConnectedAssignments,
+    clearSelfSignupConfig
 }

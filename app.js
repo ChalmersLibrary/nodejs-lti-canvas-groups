@@ -326,6 +326,151 @@ app.get('/groups', async (request, response, next) => {
     }
 });
 
+app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
+    let returnedData = {};
+    let groupData = [];
+
+    try {
+        const assignment = await db.getSelfSignupConnectedAssignments(request.params.course_id);
+
+        for (const a of assignment) {
+            let groups = await canvas.getCategoryGroups(a.group_category_id, request);
+            let userSubmission = await canvas.getAssignmentGrade(request.params.course_id, a.assignment_id, request.params.user_id, request);
+
+            for (const g of groups) {
+                groupData.push({
+                    id: g.id,
+                    name: g.name,
+                    passed: userSubmission.score >= a.min_points ? true : false,
+                    description: a.description,
+                    debug: userSubmission
+                });
+            }
+        }
+
+        returnedData = {
+            success: true,
+            groups: groupData
+        };
+    }
+    catch (error) {
+        log.error(error);
+    }
+
+    return response.json(returnedData);
+});
+
+app.delete('/api/config/self-signup/:id', async (request, response, next) => {
+    if (request.session.userId && request.session.canvasCourseId) {
+        let responseData = {};
+
+        try {
+            await db.clearSelfSignupConfig(request.session.canvasCourseId, request.params.id);
+
+            responseData = {
+                success: true,
+                message: "Self Signup Rule cleared."
+            };
+        }
+        catch (error) {
+            log.error(error);
+
+            if (error.response.status == 401) {
+                try {
+                    return response.redirect(oauth.providerLogin());
+                }
+                catch (error) {
+                    next(error);
+                }
+            } else {
+                next(new Error(error));
+            }
+        }
+
+        return response.send(responseData);
+    }
+    else {
+        log.error("No session found.");
+        return response.redirect('/error/code/41'); // Third-party cookies
+    }
+});
+
+app.put('/api/config/self-signup/:id', async (request, response, next) => {
+    if (request.session.userId && request.session.canvasCourseId) {
+        const { assignment_id, description, min_points } = request.body;
+
+        let responseData = {};
+
+        try {
+            await db.setSelfSignupConfig(request.session.canvasCourseId, request.params.id, assignment_id, description, min_points, 'production');
+
+            const writtenData = await db.getSelfSignupConfig(request.session.canvasCourseId, request.params.id);
+
+            responseData = {
+                success: true,
+                written_data: writtenData
+            };
+        }
+        catch (error) {
+            log.error(error);
+
+            if (error.response.status == 401) {
+                try {
+                    return response.redirect(oauth.providerLogin());
+                }
+                catch (error) {
+                    next(error);
+                }
+            } else {
+                next(new Error(error));
+            }
+        }
+
+        return response.send(responseData);
+    }
+    else {
+        log.error("No session found.");
+        return response.redirect('/error/code/41'); // Third-party cookies
+    }
+});
+
+app.get('/api/config/self-signup/:id/:name', async (request, response, next) => {
+    if (request.session.userId && request.session.canvasCourseId) {
+        try {
+            const data = {
+                course: {
+                    id: request.session.canvasCourseId
+                },
+                category: {
+                    id: request.params.id,
+                    name: request.params.name
+                },
+                current: await db.getSelfSignupConfig(request.session.canvasCourseId, request.params.id),
+                assignments: await canvas.getCourseAssignments(request.session.canvasCourseId, request)
+            }
+
+            console.log(JSON.stringify(data));
+            return response.json(data);
+        }
+        catch (error) {
+            log.error(error);
+
+            if (error.response.status == 401) {
+                try {
+                    return response.redirect(oauth.providerLogin());
+                } catch (error) {
+                    next(error);
+                }
+            } else {
+                next(new Error(error));
+            }
+        }
+    } else {
+        log.error("No session found.");
+        return response.redirect('/error/code/41'); // Third-party cookies
+    }
+});
+
 app.get('/csv/category/:id/:name', async(request, response, next) => {
     if (request.session.userId && request.session.canvasCourseId) {
         try {

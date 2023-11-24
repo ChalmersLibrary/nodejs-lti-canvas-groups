@@ -86,6 +86,67 @@ document.addEventListener('DOMContentLoaded', function () {
                 downloadCsvZoom(element.getAttribute("data-category-id"), element.getAttribute("data-category-name"));
             });
         });
+
+        const selfSignupConfigModal = document.getElementById('selfSignupConfigurationModal');
+        console.log(selfSignupConfigModal);
+
+        selfSignupConfigModal && selfSignupConfigModal.addEventListener("show.bs.modal", event => {
+            console.log(event);
+            selfSignupConfigModal.querySelector("#css_group_category_name").innerText = event.relatedTarget.dataset.categoryName;
+            fetch(`/api/config/self-signup/${event.relatedTarget.dataset.categoryId}/${event.relatedTarget.dataset.categoryName}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    selfSignupConfigModal.querySelector("#css_assignment_id").replaceChildren();
+                    if (data.assignments && data.assignments.length) {
+                        data.assignments.forEach(assignment => {
+                            let o = selfSignupConfigModal.querySelector("#css_assignment_id").appendChild(document.createElement("option"));
+                            o.value = assignment.id;
+                            o.innerText = `${assignment.name} (${assignment.points_possible} points)`;
+                            data.current && data.current.assignment_id && o.value == data.current.assignment_id && o.setAttribute("selected", true);
+                        })
+                    }
+                    if (data.assignments && !data.assignments.length) {
+                        let o = selfSignupConfigModal.querySelector("#css_assignment_id").appendChild(document.createElement("option"));
+                        o.innerText = "No valid assignments found in course";
+                        data.current && data.current.assignment_id && o.value == data.current.assignment_id && o.setAttribute("selected", true);
+                        selfSignupConfigModal.querySelector("#modalSubmitButton").setAttribute("disabled", true);
+                    }
+                    if (data.current && data.current.description) {
+                        selfSignupConfigModal.querySelector("#css_description").value = data.current.description;
+                    }
+                    if (data.current && data.current.min_points) {
+                        selfSignupConfigModal.querySelector("#css_min_points").value = data.current.min_points;
+                    }
+                    if (data.current && selfSignupConfigModal.querySelector("#modalClearRuleButton").classList.contains("d-none")) {
+                        selfSignupConfigModal.querySelector("#modalClearRuleButton").classList.remove("d-none");
+                        selfSignupConfigModal.querySelector("#modalClearRuleButton").classList.add("d-inline");
+                    }
+                    selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").setAttribute("action", `/api/config/self-signup/${event.relatedTarget.dataset.categoryId}`);
+                    selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").addEventListener("submit", event => {
+                        const requestOptions = {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                assignment_id: selfSignupConfigModal.querySelector("#css_assignment_id").value,
+                                description: selfSignupConfigModal.querySelector("#css_description").value,
+                                min_points: selfSignupConfigModal.querySelector("#css_min_points").value
+                            })
+                        };
+                        console.log(requestOptions);
+                        fetch(selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").getAttribute('action'), requestOptions)
+                            .then(response => {
+                                return response.text();
+                            })
+                            .then(data => {
+                                console.log(data)
+                            });
+                        
+                        event.preventDefault();
+                        event.stopPropagation();
+                    });
+                });
+        });
     }
     else if (document.location.pathname.startsWith("/dashboard")) {
         renderDashboard();

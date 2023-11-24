@@ -6,6 +6,7 @@ const NodeCache = require('node-cache');
 const axios = require('axios');
 const oauth = require('../oauth');
 const log = require('../log');
+const db = require('../db');
 
 /* This module handles communication between LTI Application and Canvas, using Canvas API V1. */
 
@@ -25,6 +26,8 @@ const groupUsersCache = new NodeCache({ errorOnMissing:true, stdTTL: CACHE_TTL, 
 const categoryGroupsCache = new NodeCache({ errorOnMissing:true, stdTTL: CACHE_TTL, checkperiod: CACHE_CHECK_EXPIRE });
 const memberCache = new NodeCache({ errorOnMissing:true, stdTTL: CACHE_TTL, checkperiod: CACHE_CHECK_EXPIRE });
 const userCache = new NodeCache({ errorOnMissing:true, stdTTL: CACHE_TTL, checkperiod: CACHE_CHECK_EXPIRE });
+const assignmentCache = new NodeCache({ errorOnMissing:true, stdTTL: CACHE_TTL, checkperiod: CACHE_CHECK_EXPIRE });
+const assignmentGradeCache = new NodeCache({ errorOnMissing: true, stdTTL: CACHE_TTL, checkperiod: CACHE_CHECK_EXPIRE });
 
 let caches = [
   {
@@ -56,13 +59,24 @@ let caches = [
     writes: 0,
     reads: 0,
     bucket: memberCache
-  }
-  ,
+  },
   {
     name: "userCache",
     writes: 0,
     reads: 0,
     bucket: userCache
+  },
+  {
+    name: "assignmentCache",
+    writes: 0,
+    reads: 0,
+    bucket: assignmentCache
+  },
+  {
+    name: "assignmentGradeCache",
+    writes: 0,
+    reads: 0,
+    bucket: assignmentGradeCache
   }
 ];
 
@@ -82,7 +96,13 @@ memberCache.on('expired', function(key) {
   log.info("[Cache] Expired NodeCache entry for memberCache key '" + key + "'.");
 });
 userCache.on('expired', function(key) {
-  log.info("[Cache] Expired NodeCache entry for userCachekey '" + key + "'.");
+  log.info("[Cache] Expired NodeCache entry for userCache key '" + key + "'.");
+});
+assignmentCache.on('expired', function(key) {
+  log.info("[Cache] Expired NodeCache entry for assignmentCache key '" + key + "'.");
+});
+assignmentGradeCache.on('expired', function(key) {
+  log.info("[Cache] Expired NodeCache entry for assignmentGradeCache key '" + key + "'.");
 });
 
 /**
@@ -348,9 +368,19 @@ module.exports.compileGroupsData = async (canvasCourseId, request) => new Promis
         reject(error);
       });
 
+      let self_signup = {
+        enabled: category.self_signup == 'enabled' || category.self_signup == 'restricted' ? true : false,
+        ruleset: []
+      };
+
+      if (self_signup.enabled) {
+        self_signup.ruleset = await db.getSelfSignupConfig(canvasCourseId, category.id);
+      }
+
       categoriesWithGroups.push({
         id: category.id,
         name: category.name,
+        self_signup: self_signup,
         groups: groupsWithUsers
       });
     }
@@ -381,6 +411,7 @@ module.exports.compileGroupsData = async (canvasCourseId, request) => new Promis
 
   await exports.cacheStat();
 
+  log.info(JSON.stringify(data));
   resolve(data);
 });
 
@@ -471,7 +502,7 @@ exports.getCourseGroups = async (courseId, request) => new Promise(async functio
 });
 
 // Get group categories for a specified course.
-exports.getGroupCategories = async (courseId, request) => new Promise(async function(resolve, reject) {
+module.exports.getGroupCategories = async (courseId, request) => new Promise(async function(resolve, reject) {
   try {
     const cachedData = groupCategoriesCache.get(courseId);
 
@@ -815,6 +846,226 @@ exports.getGroupMembers = async (groupId, request) => new Promise(async function
     resolve(returnedApiData);
   }
 });
+
+/**
+ * List assignments in course that has type "points" and are published.
+ * Used by administrator/teacher to create a Group Rule.
+ * 
+ * @param {Number} courseId 
+ * @param {Object} request 
+ * @returns Valid assignments in course to use with Group Rule.
+ */
+exports.getCourseAssignments = async (courseId, request) => new Promise(async function(resolve, reject) {
+  try {
+    const cachedData = assignmentCache.get(courseId);
+
+    log.info("[Cache] Using found NodeCache entry for courseId " + courseId + ".");
+    log.debug("[Cache] Statistics: " + JSON.stringify(assignmentCache.getStats()));
+
+    await exports.addCacheRead('assignmentCache');
+
+    resolve(cachedData);
+  }
+  catch {
+    var thisApiPath = exports.apiPath(request) + "/courses/" + courseId + "/assignments?per_page=" + API_PER_PAGE;
+    var apiData = [];
+    var returnedApiData = [];
+    var errorCount = 0;
+
+    while (errorCount < 4 && thisApiPath && request.session.token.access_token) {
+      log.info("[API] GET " + thisApiPath);
+
+      try {
+        const response = await axios.get(thisApiPath, {
+          json: true,
+          headers: {
+            "User-Agent": "Chalmers/Azure/Request",
+            "Authorization": request.session.token.token_type + " " + request.session.token.access_token
+          }
+        });
+
+        const data = response.data;
+        apiData.push(data);
+
+        if (response.headers["link"]) {
+          var link = LinkHeader.parse(response.headers["link"]);
+
+          if (link.has("rel", "next")) {
+            thisApiPath = link.get("rel", "next")[0].uri;
+          }
+          else {
+            thisApiPath = false;
+          }
+        }
+        else {
+          thisApiPath = false;
+        }
+      }
+      catch (error) {
+        errorCount++;
+        log.error("[API] Error: " + error);
+
+        if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+          await oauth.providerRefreshToken(request);
+        }
+        else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
+          log.error("[API] Not authorized in Canvas for use of this API endpoint.");
+          log.error(JSON.stringify(error));
+          reject(error);
+        }
+        else {
+          log.error(error);
+          reject(error);  
+        }
+      }
+    }
+
+    // Compile new object from all pages.
+    // TODO: Include errorCount in some way for GUI.
+    for (const page of apiData) {
+      for (const record of page) {
+        if (record.grading_type == "points" && record.published == true) {
+          returnedApiData.push({
+            id: record.id,
+            name: record.name,
+            grading_type: record.grading_type,
+            points_possible: record.points_possible,
+            published: record.published,
+            locked_for_user: record.locked_for_user
+          });
+        }
+      }
+    }
+
+    // Store in cache.
+    assignmentCache.set(courseId, returnedApiData);
+  
+    log.debug("[Cache] Data cached for " + CACHE_TTL / 60 + " minutes: " + JSON.stringify(returnedApiData));
+    log.debug("[Cache] Statistics: " + JSON.stringify(assignmentCache.getStats()));
+    log.debug("[Cache] Keys: " + assignmentCache.keys());
+
+    await exports.addCacheWrite('assignmentCache');
+
+    resolve(returnedApiData);
+  }
+});
+
+/**
+ * Get assignment submissions and the relevant grade for a particular user.
+ * Note: Uses system account rights to be able to read this information in anonymous request.
+ * 
+ * @param {Number} courseId 
+ * @param {Number} assignmentId 
+ * @param {Number} userId 
+ * @param {Object} request 
+ * @returns Grade and related information.
+ */
+exports.getAssignmentGrade = async (courseId, assignmentId, userId, request) => new Promise(async function(resolve, reject) {
+  try {
+    const cachedData = assignmentGradeCache.get(assignmentId);
+    var returnedData = {};
+
+    log.info("[Cache] Using found NodeCache entry for assignmentId " + assignmentId + ".");
+    log.debug("[Cache] Statistics: " + JSON.stringify(assignmentGradeCache.getStats()));
+
+    await exports.addCacheRead('assignmentGradeCache');
+
+    for (const entry of cachedData) {
+      if (entry.user_id == userId) {
+        returnedData = entry;
+      }
+    }
+
+    resolve(returnedData);
+  }
+  catch {
+    var thisApiPath = exports.apiPath(request) + "/courses/" + courseId + "/assignments/" + assignmentId + "/submissions?per_page=" + API_PER_PAGE;
+    var apiData = [];
+    var cachedApiData = [];
+    var returnedApiData = {};
+    var errorCount = 0;
+
+    while (errorCount < 4 && thisApiPath && request.session.token.access_token) {
+      log.info("[API] GET " + thisApiPath);
+
+      try {
+        const response = await axios.get(thisApiPath, {
+          json: true,
+          headers: {
+            "User-Agent": "Chalmers/Azure/Request",
+            "Authorization": request.session.token.token_type + " " + request.session.token.access_token // TODO: Use system key
+          }
+        });
+
+        const data = response.data;
+        apiData.push(data);
+
+        if (response.headers["link"]) {
+          var link = LinkHeader.parse(response.headers["link"]);
+
+          if (link.has("rel", "next")) {
+            thisApiPath = link.get("rel", "next")[0].uri;
+          }
+          else {
+            thisApiPath = false;
+          }
+        }
+        else {
+          thisApiPath = false;
+        }
+      }
+      catch (error) {
+        errorCount++;
+        log.error("[API] Error: " + error);
+
+        if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+          await oauth.providerRefreshToken(request);
+        }
+        else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
+          log.error("[API] Not authorized in Canvas for use of this API endpoint.");
+          log.error(JSON.stringify(error));
+          reject(error);
+        }
+        else {
+          log.error(error);
+          reject(error);  
+        }
+      }
+    }
+
+    // Compile new object from all pages.
+    // TODO: Include errorCount in some way for GUI.
+    for (const page of apiData) {
+      for (const record of page) {
+        cachedApiData.push({
+          user_id: record.user_id,
+          workflow_state: record.workflow_state,
+          submitted_at: record.submitted_at,
+          score: record.score,
+          entered_score: record.entered_score
+        });
+      }
+    }
+
+    // Store in cache.
+    assignmentGradeCache.set(assignmentId, cachedApiData);
+  
+    log.debug("[Cache] Data cached for " + CACHE_TTL / 60 + " minutes: " + JSON.stringify(cachedApiData));
+    log.debug("[Cache] Statistics: " + JSON.stringify(assignmentGradeCache.getStats()));
+    log.debug("[Cache] Keys: " + assignmentGradeCache.keys());
+
+    await exports.addCacheWrite('assignmentGradeCache');
+
+    for (const entry of cachedApiData) {
+      if (entry.user_id == userId) {
+        returnedApiData = entry;
+      }
+    }
+
+    resolve(returnedApiData);
+  }
+});
+
 
 // Get details about one specified user.
 exports.getUser = async (userId, request) => new Promise(async function(resolve, reject) {
