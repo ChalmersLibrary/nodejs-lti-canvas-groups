@@ -122,8 +122,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         selfSignupConfigModal.querySelector("#modalClearRuleButton").classList.remove("d-none");
                         selfSignupConfigModal.querySelector("#modalClearRuleButton").classList.add("d-inline");
                     }
+                    // no data.current... clear values etc...
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").setAttribute("action", `/api/config/self-signup/${event.relatedTarget.dataset.categoryId}`);
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").addEventListener("submit", event => {
+                        const submitButton = selfSignupConfigModal.querySelector("#modalSubmitButton");
+                        const submitButtonSpinner = selfSignupConfigModal.querySelector("#modalSubmitButtonSpinner");
+                        submitButton.disabled = true;
+                        submitButtonSpinner.style.display = "inline-block";
+
                         const requestOptions = {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
@@ -132,6 +138,27 @@ document.addEventListener('DOMContentLoaded', function () {
                                 description: selfSignupConfigModal.querySelector("#css_description").value,
                                 min_points: selfSignupConfigModal.querySelector("#css_min_points").value
                             })
+                        };
+                        console.log(requestOptions);
+                        fetch(selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").getAttribute('action'), requestOptions)
+                            .then(response => {
+                                return response.text();
+                            })
+                            .then(data => {
+                                console.log(data);
+                                // if error...
+                                submitButton.disabled = false;
+                                submitButtonSpinner.style.display = "none";
+                            });
+                        
+                        event.preventDefault();
+                        event.stopPropagation();
+                    });
+                    selfSignupConfigModal.querySelector("#selfSignupConfigurationForm button#modalClearRuleButton").addEventListener("click", event => {
+                        console.log("Clear rule.");
+                        const requestOptions = {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' }
                         };
                         console.log(requestOptions);
                         fetch(selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").getAttribute('action'), requestOptions)

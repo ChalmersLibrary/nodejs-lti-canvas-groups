@@ -587,7 +587,7 @@ module.exports.getGroupCategories = async (courseId, request) => new Promise(asy
 });
 
 // Get groups for a specified category.
-exports.getCategoryGroups = async (categoryId, request) => new Promise(async function(resolve, reject) {
+exports.getCategoryGroups = async (categoryId, request, access_token) => new Promise(async function(resolve, reject) {
   try {
     const cachedData = categoryGroupsCache.get(categoryId);
 
@@ -604,7 +604,7 @@ exports.getCategoryGroups = async (categoryId, request) => new Promise(async fun
     var returnedApiData = [];
     var errorCount = 0;
 
-    while (errorCount < 4 && thisApiPath && request.session.token.access_token) {
+    while (errorCount < 4 && thisApiPath && (request.session.token.access_token || access_token)) {
       log.info("[API] GET " + thisApiPath);
 
       try {
@@ -612,7 +612,7 @@ exports.getCategoryGroups = async (categoryId, request) => new Promise(async fun
           json: true,
           headers: {
             "User-Agent": "Chalmers/Azure/Request",
-            "Authorization": request.session.token.token_type + " " + request.session.token.access_token
+            "Authorization": access_token ? "Bearer " + access_token : request.session.token.token_type + " " + request.session.token.access_token
           }
         });
 
@@ -637,7 +637,11 @@ exports.getCategoryGroups = async (categoryId, request) => new Promise(async fun
         errorCount++;
         log.error("[API] Error: " + error);
 
-        if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+        if (error.response.status == 404) {
+          thisApiPath = false;
+          log.error("Group category not found, possibly deleted referenced from self signup config. Returning empty data.");
+        }
+        else if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
           await oauth.providerRefreshToken(request);
         }
         else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
@@ -960,7 +964,7 @@ exports.getCourseAssignments = async (courseId, request) => new Promise(async fu
  * @param {Object} request 
  * @returns Grade and related information.
  */
-exports.getAssignmentGrade = async (courseId, assignmentId, userId, request) => new Promise(async function(resolve, reject) {
+exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, access_token) => new Promise(async function(resolve, reject) {
   try {
     const cachedData = assignmentGradeCache.get(assignmentId);
     var returnedData = {};
@@ -985,7 +989,7 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request) => 
     var returnedApiData = {};
     var errorCount = 0;
 
-    while (errorCount < 4 && thisApiPath && request.session.token.access_token) {
+    while (errorCount < 4 && thisApiPath && (request.session.token.access_token || access_token)) {
       log.info("[API] GET " + thisApiPath);
 
       try {
@@ -993,7 +997,7 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request) => 
           json: true,
           headers: {
             "User-Agent": "Chalmers/Azure/Request",
-            "Authorization": request.session.token.token_type + " " + request.session.token.access_token // TODO: Use system key
+            "Authorization": access_token ? "Bearer " + access_token : request.session.token.token_type + " " + request.session.token.access_token
           }
         });
 
@@ -1034,7 +1038,6 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request) => 
     }
 
     // Compile new object from all pages.
-    // TODO: Include errorCount in some way for GUI.
     for (const page of apiData) {
       for (const record of page) {
         cachedApiData.push({

@@ -74,11 +74,6 @@ html(lang='en')
                         label(for="css_assignment_id" class="form-label") Assignment
                         select(class="form-control" id="css_assignment_id")
                           option(value="") No assignment
-                          option 1
-                          option 2
-                          option 3
-                          option 4
-                          option 5
                       div(class="mb-3")
                         label(for="css_min_points" class="form-label") Min points
                         input(class="form-control" type="number" id="css_min_points" value="10")
@@ -87,11 +82,16 @@ html(lang='en')
                         input(class="form-control" type="text" id="css_description" value="")
                         div(class="form-text") Displayed for a student trying to self signup when it's locked.
                   div(class="modal-footer")
-                    p A student can only self signup to a group in this category when a submission exists for the selected assignment and the grading is min points or higher. The assignment needs to have grading set to "points" and be published in order to appear in the dropdown.
+                    p A student can only self signup to a group in this category when a submission exists for the selected assignment and the grading is min points or higher.
+                  div(class="modal-footer d-none")
+                    div(class="alert alert-success d-none" id="successInformation")
+                    div(class="alert alert-error d-none" id="errorInformation")                    
                   div(class="modal-footer")
                     button(type="button" id="modalCloseButton" class="btn btn-secondary" data-bs-dismiss="modal") Close
-                    button(type="button" id="modalClearRuleButton" class="btn btn-primary d-none") Remove rule
+                    button(type="button" id="modalClearRuleButton" class="btn btn-primary d-none") Clear rule
+                      span(id="modalClearRuleButtonSpinner" class="spinner-border spinner-border-sm" style="display:none;" role="status" aria-hidden="true")
                     button(type="submit" id="modalSubmitButton" class="btn btn-primary") Save changes
+                      span(id="modalSubmitButtonSpinner" class="spinner-border spinner-border-sm" style="display:none;" role="status" aria-hidden="true")
 
     script(src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js' integrity='sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL' crossorigin='anonymous')
     script(src='/assets/js/script.js?v=1.4.2.1')
