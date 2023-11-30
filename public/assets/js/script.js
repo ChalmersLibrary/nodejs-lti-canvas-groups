@@ -7,15 +7,17 @@ function downloadCsvZoom(categoryId, categoryName) {
 }
 
 function renderDashboard() {
-    if ($('#chartContainer')) {
+    if (document.getElementById('chartContainer')) {
         let data_labels = [];
         var data_reads = [];
         var data_reads_total = 0;
         var data_writes = [];
         var data_writes_total = 0;
-
-        $.getJSON('/json/stats').done(function(data) {
-            $.each(data.cache_stats, function(index, value) {
+        
+        fetch('/json/stats').then(response => response.json())
+        .then(data => {
+            console.log(data); // TODO: debug
+            data.cache_stats.forEach(value => {
                 data_labels.push(value.name);
                 data_reads.push(value.reads);
                 data_writes.push(value.writes);
@@ -23,12 +25,12 @@ function renderDashboard() {
                 data_writes_total = data_writes_total + value.writes;
             });
 
-            $('#active_users').text(data.active_users_today);
-            $('#total_users').text(data.authorized_users);
-            $('#total_reads').text(data_reads_total);
-            $('#total_writes').text(data_writes_total);
+            document.getElementById('active_users').innerText = data.active_users_today;
+            document.getElementById('total_users').innerText = data.authorized_users;
+            document.getElementById('total_reads').innerText = data_reads_total;
+            document.getElementById('total_writes').innerText = data_writes_total;
 
-            (data_reads_total > 0 && data_writes_total > 0) ? $('span.percent').text(' (' + Math.round((data_reads_total / data_writes_total) * 100) + '%)'): $('span.percent').text(' (0%)');
+            (data_reads_total > 0 && data_writes_total > 0) ? document.querySelector('span.percent').innerText = ' (' + Math.round((data_reads_total / data_writes_total) * 100) + '%)': document.querySelector('span.percent').innerText = ' (0%)';
 
             var ctx = document.getElementById('chartContainer').getContext('2d');
 
