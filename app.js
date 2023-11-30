@@ -90,6 +90,7 @@ app.get('/json/stats', async(request, response) => {
     if (request.session.userId) {
         if (adminUserIds.length && adminUserIds.includes(request.session.userId)) {
             const authorizedUsers = await db.getAllClientsData();
+            const selfSignupConfig = await db.getAllSelfSignupConfigData();
             const cacheContents = await canvas.getCacheStat();
 
             let now = new Date();
@@ -110,6 +111,7 @@ app.get('/json/stats', async(request, response) => {
                 version: pkg.version,
                 authorized_users: authorizedUsers.length,
                 active_users_today: activeUsersToday,
+                self_signup_configs: selfSignupConfig.length,
                 cache_stats: cacheStats
             });
         } else {

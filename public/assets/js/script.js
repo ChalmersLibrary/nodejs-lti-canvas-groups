@@ -16,7 +16,6 @@ function renderDashboard() {
         
         fetch('/json/stats').then(response => response.json())
         .then(data => {
-            console.log(data); // TODO: debug
             data.cache_stats.forEach(value => {
                 data_labels.push(value.name);
                 data_reads.push(value.reads);
@@ -27,6 +26,7 @@ function renderDashboard() {
 
             document.getElementById('active_users').innerText = data.active_users_today;
             document.getElementById('total_users').innerText = data.authorized_users;
+            document.getElementById('self_signup_configs').innerText = data.self_signup_configs;
             document.getElementById('total_reads').innerText = data_reads_total;
             document.getElementById('total_writes').innerText = data_writes_total;
 

@@ -77,6 +77,28 @@ async function getAllClientsData() {
     });
 }
 
+async function getAllSelfSignupConfigData() {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            db.all('SELECT DISTINCT canvas_course_id, group_category_id, assignment_id, created_at FROM self_signup_config ORDER BY created_at DESC', (err, rows) => {
+                if (err) reject(err);
+
+                const clientData = [];
+
+                rows.forEach((row) => {
+                    clientData.push({
+                        canvas_course_id: row.canvas_course_id,
+                        group_category_id: row.group_category_id,
+                        assignment_id: row.assignment_id,
+                        created_at: new Date(row.created_at).toISOString()
+                    });
+                });
+
+                resolve(clientData);
+            });
+        });
+    });
+}
 
 async function getAllClientsDataMocked() {
     return new Promise((resolve, reject) => {
@@ -203,6 +225,7 @@ async function clearSelfSignupConfig(courseId, groupCategoryId) {
 module.exports = {
     getAllClientsDataMocked,
     getAllClientsData,
+    getAllSelfSignupConfigData,
     setClientData,
     getClientData,
     setSelfSignupConfig,

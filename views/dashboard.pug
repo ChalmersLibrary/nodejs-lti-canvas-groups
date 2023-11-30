@@ -17,27 +17,32 @@ html(lang='en')
             h1 Canvas Group Tool
             p.lead Helping Canvas teachers and admins at Chalmers University of Technology organize their groups and users.
       .row
-        .col-sm-3
+        .col-sm
           div.card.text-center.text-white.bg-dark
             div.card-body
               h1#active_users.card-title 28
               p.card-text Active users today
-        .col-sm-3
+        .col-sm
           div.card.text-center.text-white.bg-dark
             div.card-body
               h1#total_users.card-title 165
               p.card-text Authorized users
-        .col-sm-3
-          div.card.text-center.text-white.bg-info
+        .col-sm
+          div.card.text-center.text-white.bg-secondary
+            div.card-body
+              h1#self_signup_configs.card-title 446
+              p.card-text Self signup configs
+        .col-sm
+          div.card.text-center.text-white.bg-primary
+            div.card-body
+              h1#total_writes.card-title 446
+              p.card-text Cache writes
+        .col-sm
+          div.card.text-center.text-white.bg-primary
             div.card-body
               h1#total_reads.card-title 46
               p.card-text Cache reads
                 span.percent
-        .col-sm-3
-          div.card.text-center.text-white.bg-info
-            div.card-body
-              h1#total_writes.card-title 446
-              p.card-text Cache writes
       .row
         .col-sm-12
           canvas#chartContainer(width='100%')
