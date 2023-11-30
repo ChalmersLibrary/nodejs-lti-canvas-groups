@@ -296,6 +296,9 @@ app.get('/loading/:page', async(request, response) => {
     return response.render('loading', { page: request.params.page });
 });
 
+/**
+ * General user interface for viewing and downloading csv files, plus configuring Self signup rules.
+ */
 app.get('/groups', async (request, response, next) => {
     if (request.session.userId && request.session.canvasCourseId) {
         try {
@@ -326,6 +329,10 @@ app.get('/groups', async (request, response, next) => {
     }
 });
 
+/**
+ * Public API used by Canvas injected custom js to get information on self signup
+ * and submissions to configured assignment for a specific user.
+ */
 app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
     let returnedData = {};
     let groupData = [];
@@ -334,8 +341,8 @@ app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
         const assignment = await db.getSelfSignupConnectedAssignments(request.params.course_id);
 
         for (const a of assignment) {
-            let groups = await canvas.getCategoryGroups(a.group_category_id, request);
-            let userSubmission = await canvas.getAssignmentGrade(request.params.course_id, a.assignment_id, request.params.user_id, request);
+            let groups = await canvas.getCategoryGroups(a.group_category_id, request, process.env.systemApiToken);
+            let userSubmission = await canvas.getAssignmentGrade(request.params.course_id, a.assignment_id, request.params.user_id, request, process.env.systemApiToken);
 
             for (const g of groups) {
                 groupData.push({
@@ -360,6 +367,9 @@ app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
     return response.json(returnedData);
 });
 
+/**
+ * API for deleting a ruleset.
+ */
 app.delete('/api/config/self-signup/:id', async (request, response, next) => {
     if (request.session.userId && request.session.canvasCourseId) {
         let responseData = {};
@@ -369,7 +379,7 @@ app.delete('/api/config/self-signup/:id', async (request, response, next) => {
 
             responseData = {
                 success: true,
-                message: "Self Signup Rule cleared."
+                message: "Self signup rule cleared."
             };
         }
         catch (error) {
@@ -383,7 +393,10 @@ app.delete('/api/config/self-signup/:id', async (request, response, next) => {
                     next(error);
                 }
             } else {
-                next(new Error(error));
+                responseData = {
+                    success: false,
+                    message: error.message
+                };
             }
         }
 
@@ -395,6 +408,9 @@ app.delete('/api/config/self-signup/:id', async (request, response, next) => {
     }
 });
 
+/**
+ * API for creating or updating a ruleset.
+ */
 app.put('/api/config/self-signup/:id', async (request, response, next) => {
     if (request.session.userId && request.session.canvasCourseId) {
         const { assignment_id, description, min_points } = request.body;
@@ -408,13 +424,14 @@ app.put('/api/config/self-signup/:id', async (request, response, next) => {
 
             responseData = {
                 success: true,
+                message: "Rule was created or updated.",
                 written_data: writtenData
             };
         }
         catch (error) {
             log.error(error);
 
-            if (error.response.status == 401) {
+            if (error.response?.status == 401) {
                 try {
                     return response.redirect(oauth.providerLogin());
                 }
@@ -422,7 +439,10 @@ app.put('/api/config/self-signup/:id', async (request, response, next) => {
                     next(error);
                 }
             } else {
-                next(new Error(error));
+                responseData = {
+                    success: false,
+                    message: error.message
+                };
             }
         }
 

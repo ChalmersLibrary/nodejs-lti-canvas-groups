@@ -88,8 +88,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const selfSignupConfigModal = document.getElementById('selfSignupConfigurationModal');
-        console.log(selfSignupConfigModal);
-
         selfSignupConfigModal && selfSignupConfigModal.addEventListener("show.bs.modal", event => {
             console.log(event);
             selfSignupConfigModal.querySelector("#css_group_category_name").innerText = event.relatedTarget.dataset.categoryName;
@@ -97,6 +95,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(response => response.json())
                 .then(data => {
                     console.log(data);
+                    selfSignupConfigModal.querySelector("#successInformation").style.display = "none";
+                    selfSignupConfigModal.querySelector("#errorInformation").style.display = "none";
+
                     selfSignupConfigModal.querySelector("#css_assignment_id").replaceChildren();
                     if (data.assignments && data.assignments.length) {
                         data.assignments.forEach(assignment => {
@@ -118,9 +119,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.current && data.current.min_points) {
                         selfSignupConfigModal.querySelector("#css_min_points").value = data.current.min_points;
                     }
-                    if (data.current && selfSignupConfigModal.querySelector("#modalClearRuleButton").classList.contains("d-none")) {
-                        selfSignupConfigModal.querySelector("#modalClearRuleButton").classList.remove("d-none");
-                        selfSignupConfigModal.querySelector("#modalClearRuleButton").classList.add("d-inline");
+                    if (data.current && selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display == "none") {
+                        selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "inline";
                     }
                     // no data.current... clear values etc...
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").setAttribute("action", `/api/config/self-signup/${event.relatedTarget.dataset.categoryId}`);
@@ -129,6 +129,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         const submitButtonSpinner = selfSignupConfigModal.querySelector("#modalSubmitButtonSpinner");
                         submitButton.disabled = true;
                         submitButtonSpinner.style.display = "inline-block";
+
+                        selfSignupConfigModal.querySelector("#successInformation").style.display = "none";
+                        selfSignupConfigModal.querySelector("#errorInformation").style.display = "none";
 
                         const requestOptions = {
                             method: 'PUT',
@@ -141,14 +144,22 @@ document.addEventListener('DOMContentLoaded', function () {
                         };
                         console.log(requestOptions);
                         fetch(selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").getAttribute('action'), requestOptions)
-                            .then(response => {
-                                return response.text();
-                            })
+                            .then(response => response.json())
                             .then(data => {
                                 console.log(data);
-                                // if error...
                                 submitButton.disabled = false;
                                 submitButtonSpinner.style.display = "none";
+                                if (!data.success) {
+                                    selfSignupConfigModal.querySelector("#errorInformation").innerText = data.message;
+                                    selfSignupConfigModal.querySelector("#errorInformation").style.display = "block";
+                                    selfSignupConfigModal.querySelector("#successInformation").style.display = "none";
+                                }
+                                else {
+                                    selfSignupConfigModal.querySelector("#successInformation").innerText = data.message;
+                                    selfSignupConfigModal.querySelector("#successInformation").style.display = "block";
+                                    selfSignupConfigModal.querySelector("#errorInformation").style.display = "none";
+                                    selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "inline";
+                                }
                             });
                         
                         event.preventDefault();
@@ -156,17 +167,41 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm button#modalClearRuleButton").addEventListener("click", event => {
                         console.log("Clear rule.");
+
+                        const button = selfSignupConfigModal.querySelector("#modalClearRuleButton");
+                        const buttonSpinner = selfSignupConfigModal.querySelector("#modalClearRuleButtonSpinner");
+                        button.disabled = true;
+                        buttonSpinner.style.display = "inline-block";
+
+                        selfSignupConfigModal.querySelector("#successInformation").style.display = "none";
+                        selfSignupConfigModal.querySelector("#errorInformation").style.display = "none";
+
                         const requestOptions = {
                             method: 'DELETE',
                             headers: { 'Content-Type': 'application/json' }
                         };
+
                         console.log(requestOptions);
+
                         fetch(selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").getAttribute('action'), requestOptions)
-                            .then(response => {
-                                return response.text();
-                            })
+                            .then(response => response.json())
                             .then(data => {
-                                console.log(data)
+                                console.log(data);
+
+                                button.disabled = false;
+                                buttonSpinner.style.display = "none";
+
+                                if (!data.success) {
+                                    selfSignupConfigModal.querySelector("#errorInformation").innerText = data.message;
+                                    selfSignupConfigModal.querySelector("#errorInformation").style.display = "block";
+                                    selfSignupConfigModal.querySelector("#successInformation").style.display = "none";
+                                }
+                                else {
+                                    selfSignupConfigModal.querySelector("#successInformation").innerText = data.message;
+                                    selfSignupConfigModal.querySelector("#successInformation").style.display = "block";
+                                    selfSignupConfigModal.querySelector("#errorInformation").style.display = "none";
+                                    selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "none";    
+                                }
                             });
                         
                         event.preventDefault();

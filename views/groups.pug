@@ -19,7 +19,7 @@ html(lang='en')
 
               div(class='button-bar')
                   if category.self_signup.enabled
-                    button(type='button' class='btn btn-primary btn-sm btn-configure-self-signup' data-bs-toggle='modal' data-bs-target='#selfSignupConfigurationModal' data-category-id=category.id data-category-name=category.name) Configure Self Signup Rules (#{category.self_signup.ruleset ? 1 : 0})
+                    button(type='button' class='btn btn-primary btn-sm btn-configure-self-signup' data-bs-toggle='modal' data-bs-target='#selfSignupConfigurationModal' data-category-id=category.id data-category-name=category.name) Self signup rule
                   button(type='button' class='btn btn-primary btn-sm btn-download-csv' data-category-id=category.id data-category-name=category.name) Download CSV for Excel
                   button(type='button' class='btn btn-primary btn-sm btn-download-csv-zoom' data-category-id=category.id data-category-name=category.name) Download CSV for Zoom Breakout Rooms
                   small Note: Students with custom email (ie Gmail) are not matched automatically in Zoom
@@ -62,33 +62,33 @@ html(lang='en')
               div(class="modal-content")
                 form(id="selfSignupConfigurationForm" action="" class="")
                   div(class="modal-header")
-                    h1(class="modal-title fs-5" id="selfSignupConfigurationModalTitle") Configure Self Signup Rule
+                    h1(class="modal-title fs-5" id="selfSignupConfigurationModalTitle") Rule for self signup groups
                     button(type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close")
                   div(class="modal-body")
                     p 
-                      label(for="css_group_category_name" class="form-label") Group category
+                      label(for="css_group_category_name" class="form-label") Group set
                       br
                       strong 
-                        span(id="css_group_category_name") 
-                      div(class="mb-3")
-                        label(for="css_assignment_id" class="form-label") Assignment
-                        select(class="form-control" id="css_assignment_id")
-                          option(value="") No assignment
-                      div(class="mb-3")
-                        label(for="css_min_points" class="form-label") Min points
-                        input(class="form-control" type="number" id="css_min_points" value="10")
-                      div(class="mb-3")
-                        label(for="css_description" class="form-label") Description
-                        input(class="form-control" type="text" id="css_description" value="")
-                        div(class="form-text") Displayed for a student trying to self signup when it's locked.
-                  div(class="modal-footer")
+                        span(id="css_group_category_name")
+                    div(class="mb-3")
+                      label(for="css_assignment_id" class="form-label") Assignment
+                      select(class="form-control" id="css_assignment_id")
+                        option(value="") No assignment
+                    div(class="mb-3")
+                      label(for="css_min_points" class="form-label") Min points
+                      input(class="form-control" type="number" id="css_min_points" value="10")
+                    div(class="mb-3")
+                      label(for="css_description" class="form-label") Description
+                      input(class="form-control" type="text" id="css_description" value="")
+                      div(class="form-text") Displayed for a student trying to self signup when it's locked.
+
                     p A student can only self signup to a group in this category when a submission exists for the selected assignment and the grading is min points or higher.
-                  div(class="modal-footer d-none")
-                    div(class="alert alert-success d-none" id="successInformation")
-                    div(class="alert alert-error d-none" id="errorInformation")                    
+
+                    div(class="alert alert-success" id="successInformation" style="display:none;")
+                    div(class="alert alert-warning" id="errorInformation" style="display:none;")
                   div(class="modal-footer")
                     button(type="button" id="modalCloseButton" class="btn btn-secondary" data-bs-dismiss="modal") Close
-                    button(type="button" id="modalClearRuleButton" class="btn btn-primary d-none") Clear rule
+                    button(type="button" id="modalClearRuleButton" class="btn btn-primary" style="display:none;") Remove rule
                       span(id="modalClearRuleButtonSpinner" class="spinner-border spinner-border-sm" style="display:none;" role="status" aria-hidden="true")
                     button(type="submit" id="modalSubmitButton" class="btn btn-primary") Save changes
                       span(id="modalSubmitButtonSpinner" class="spinner-border spinner-border-sm" style="display:none;" role="status" aria-hidden="true")
