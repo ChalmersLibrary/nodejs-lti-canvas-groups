@@ -6,12 +6,9 @@ html(lang='en')
     meta(name='viewport', content='width=device-width, initial-scale=1.0')
     meta(name='description', content='nodejs-lti-canvas-groups')
     meta(name='author', content='Rolf Johansson')
-    link(rel='stylesheet', href='https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css')
+    link(rel='stylesheet', href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css' integrity='sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN' crossorigin='anonymous')
     link(rel='stylesheet', href='https://fonts.googleapis.com/css?family=Lato:300,400,400i,700&amp;subset=latin-ext&amp;display=swap')
     link(rel='stylesheet', href='/assets/styles/styles.css?v=1.4')
-    script(src='https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js')
-    script(src='https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js')
-    script(src='/assets/js/script.js?v=1.4.2.1')
     unless page == 'stop'
         meta(http-equiv='refresh', content='0;url=/' + page)
   body
@@ -20,3 +17,5 @@ html(lang='en')
         .col-lg-12.text-left
             h3 Loading data from Canvas API...
             progress(max='100', value='10')
+    script(src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js' integrity='sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL' crossorigin='anonymous')
+    script(src='/assets/js/script.js?v=1.4.2.1')
