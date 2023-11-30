@@ -343,12 +343,6 @@ app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
     let returnedData = {};
     let groupData = [];
 
-    returnedData = {
-        success: true,
-        groups: groupData
-    };
-
-    /*
     try {
         const assignment = await db.getSelfSignupConnectedAssignments(request.params.course_id);
 
@@ -374,7 +368,7 @@ app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
     }
     catch (error) {
         log.error(error);
-    } */
+    }
 
     return response.json(returnedData);
 });
