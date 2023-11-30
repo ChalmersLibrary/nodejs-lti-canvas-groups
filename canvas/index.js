@@ -34,48 +34,56 @@ let caches = [
     name: "courseGroupsCache",
     writes: 0,
     reads: 0,
+    dashboard: false,
     bucket: courseGroupsCache
   },
   {
     name: "groupCategoriesCache",
     writes: 0,
     reads: 0,
+    dashboard: true,
     bucket: groupCategoriesCache
   },
   {
     name: "groupUsersCache",
     writes: 0,
     reads: 0,
+    dashboard: true,
     bucket: groupUsersCache
   },
   {
     name: "categoryGroupsCache",
     writes: 0,
     reads: 0,
+    dashboard: true,
     bucket: categoryGroupsCache
   },
   {
     name: "memberCache",
     writes: 0,
     reads: 0,
+    dashboard: false,
     bucket: memberCache
   },
   {
     name: "userCache",
     writes: 0,
     reads: 0,
+    dashboard: false,
     bucket: userCache
   },
   {
     name: "assignmentCache",
     writes: 0,
     reads: 0,
+    dashboard: true,
     bucket: assignmentCache
   },
   {
     name: "assignmentGradeCache",
     writes: 0,
     reads: 0,
+    dashboard: true,
     bucket: assignmentGradeCache
   }
 ];
@@ -230,6 +238,7 @@ module.exports.getCacheStat = async () => new Promise(async function (resolve, r
       name: cache.name,
       reads: cache.reads,
       writes: cache.writes,
+      dashboard: cache.dashboard,
       keys: cacheKeys
     };
 

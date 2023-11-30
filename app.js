@@ -103,7 +103,7 @@ app.get('/json/stats', async(request, response) => {
             });
 
             cacheContents.forEach(cache => {
-                cacheStats.push({ name: cache.name, reads: cache.reads, writes: cache.writes });
+                cache.dashboard && cacheStats.push({ name: cache.name, reads: cache.reads, writes: cache.writes });
             });
 
             return response.send({
