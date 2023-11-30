@@ -157,7 +157,7 @@ exports.apiPath = (request) => {
     if (process.env.canvasBaseUri) {
       return(process.env.canvasBaseUri + canvasApiPath);
     }
-    else if (request.session.canvasApiDomain) {
+    else if (request.session && request.session.canvasApiDomain) {
       return('https://' + request.session.canvasApiDomain + canvasApiPath);
     }
     else {
@@ -613,7 +613,7 @@ exports.getCategoryGroups = async (categoryId, request, access_token) => new Pro
     var returnedApiData = [];
     var errorCount = 0;
 
-    while (errorCount < 4 && thisApiPath && (request.session.token.access_token || access_token)) {
+    while (errorCount < 4 && thisApiPath && (request.session?.token?.access_token || access_token)) {
       log.info("[API] GET " + thisApiPath);
 
       try {
@@ -1002,7 +1002,7 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, acc
     var returnedApiData = {};
     var errorCount = 0;
 
-    while (errorCount < 4 && thisApiPath && (request.session.token.access_token || access_token)) {
+    while (errorCount < 4 && thisApiPath && (request.session?.token?.access_token || access_token)) {
       log.info("[API] GET " + thisApiPath);
 
       try {
