@@ -71,7 +71,10 @@ document.addEventListener('DOMContentLoaded', function () {
         setInterval(function () {
             var progress = document.getElementsByTagName('progress')[0];
             if (progress.value < progress.max) {
-                progress.value > 30 && progress.value < 60 ? progress.value += 3 : progress.value += 1;
+                progress.value > 1 && progress.value < 60 ? progress.value += 4 : progress.value += 1;
+            }
+            if (progress.value >= progress.max) {
+                document.querySelector("div.row.error-message").classList.remove("d-none");
             }
         }, 900);
     }
