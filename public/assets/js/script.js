@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function () {
             fetch(`/api/config/self-signup/${event.relatedTarget.dataset.categoryId}/${event.relatedTarget.dataset.categoryName}`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data);
+                    console.log(data); // TODO: debug
                     selfSignupConfigModal.querySelector("#successInformation").style.display = "none";
                     selfSignupConfigModal.querySelector("#errorInformation").style.display = "none";
 
@@ -122,7 +122,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.current && selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display == "none") {
                         selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "inline";
                     }
-                    // no data.current... clear values etc...
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").setAttribute("action", `/api/config/self-signup/${event.relatedTarget.dataset.categoryId}`);
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").addEventListener("submit", event => {
                         const submitButton = selfSignupConfigModal.querySelector("#modalSubmitButton");
@@ -142,11 +141,11 @@ document.addEventListener('DOMContentLoaded', function () {
                                 min_points: selfSignupConfigModal.querySelector("#css_min_points").value
                             })
                         };
-                        console.log(requestOptions);
+                        console.log(requestOptions); // TODO: debug
                         fetch(selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").getAttribute('action'), requestOptions)
                             .then(response => response.json())
                             .then(data => {
-                                console.log(data);
+                                console.log(data); // TODO: debug
                                 submitButton.disabled = false;
                                 submitButtonSpinner.style.display = "none";
                                 if (!data.success) {
@@ -166,8 +165,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         event.stopPropagation();
                     });
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm button#modalClearRuleButton").addEventListener("click", event => {
-                        console.log("Clear rule.");
-
                         const button = selfSignupConfigModal.querySelector("#modalClearRuleButton");
                         const buttonSpinner = selfSignupConfigModal.querySelector("#modalClearRuleButtonSpinner");
                         button.disabled = true;
@@ -181,12 +178,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             headers: { 'Content-Type': 'application/json' }
                         };
 
-                        console.log(requestOptions);
+                        console.log(requestOptions); // TODO: debug
 
                         fetch(selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").getAttribute('action'), requestOptions)
                             .then(response => response.json())
                             .then(data => {
-                                console.log(data);
+                                console.log(data); // TODO: debug
 
                                 button.disabled = false;
                                 buttonSpinner.style.display = "none";
@@ -200,7 +197,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                     selfSignupConfigModal.querySelector("#successInformation").innerText = data.message;
                                     selfSignupConfigModal.querySelector("#successInformation").style.display = "block";
                                     selfSignupConfigModal.querySelector("#errorInformation").style.display = "none";
-                                    selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "none";    
+                                    selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "none";
+                                    selfSignupConfigModal.querySelector("#css_description").value = selfSignupConfigModal.querySelector("#css_description").getAttribute("data-default");
+                                    selfSignupConfigModal.querySelector("#css_min_points").value = selfSignupConfigModal.querySelector("#css_min_points").getAttribute("data-default");
                                 }
                             });
                         
