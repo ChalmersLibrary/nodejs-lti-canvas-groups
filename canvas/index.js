@@ -617,12 +617,16 @@ exports.getCategoryGroups = async (categoryId, request, access_token) => new Pro
       log.info("[API] GET " + thisApiPath);
 
       try {
+        const headers = {
+          "User-Agent": "Chalmers/Azure/Request",
+          "Authorization": access_token ? "Bearer " + access_token : request.session.token.token_type + " " + request.session.token.access_token
+        };
+        
+        log.info(JSON.stringify(headers));
+
         const response = await axios.get(thisApiPath, {
           json: true,
-          headers: {
-            "User-Agent": "Chalmers/Azure/Request",
-            "Authorization": access_token ? "Bearer " + access_token : request.session.token.token_type + " " + request.session.token.access_token
-          }
+          headers: headers
         });
 
         const data = response.data;
@@ -1002,12 +1006,16 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, acc
       log.info("[API] GET " + thisApiPath);
 
       try {
+        const headers = {
+          "User-Agent": "Chalmers/Azure/Request",
+          "Authorization": access_token ? "Bearer " + access_token : request.session.token.token_type + " " + request.session.token.access_token
+        };
+        
+        log.info(JSON.stringify(headers));
+
         const response = await axios.get(thisApiPath, {
           json: true,
-          headers: {
-            "User-Agent": "Chalmers/Azure/Request",
-            "Authorization": access_token ? "Bearer " + access_token : request.session.token.token_type + " " + request.session.token.access_token
-          }
+          headers: headers
         });
 
         const data = response.data;
