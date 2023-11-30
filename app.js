@@ -63,8 +63,13 @@ app.use("/assets", express.static(__dirname + '/public/assets'));
 // Content Security Policy Header
 app.use(function (req, res, next) {
     res.setHeader(
-      'Content-Security-Policy', 
-      "default-src 'self'; script-src 'self' cdn.jsdelivr.net maxcdn.bootstrapcdn.com ajax.googleapis.com unpkg.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net maxcdn.bootstrapcdn.com fonts.googleapis.com; font-src 'self' cdn.jsdelivr.net fonts.gstatic.com fonts.googleapis.com; img-src 'self' data:; frame-src 'self'" + (process.env.CSP_FRAME_SRC_ALLOW ? " " + process.env.CSP_FRAME_SRC_ALLOW : "")
+        'Content-Security-Policy', 
+        "default-src 'self'; script-src 'self' cdn.jsdelivr.net maxcdn.bootstrapcdn.com ajax.googleapis.com unpkg.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net maxcdn.bootstrapcdn.com fonts.googleapis.com; font-src 'self' cdn.jsdelivr.net fonts.gstatic.com fonts.googleapis.com; img-src 'self' data:; frame-src 'self'" + (process.env.CSP_FRAME_SRC_ALLOW ? " " + process.env.CSP_FRAME_SRC_ALLOW : "")
+    );
+
+    res.setHeader(
+        'Access-Control-Allow-Origin',
+        'https://chalmers.instructure.com'
     );
     
     next();
