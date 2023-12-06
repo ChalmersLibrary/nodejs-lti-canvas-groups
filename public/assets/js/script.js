@@ -127,6 +127,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.current && selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display == "none") {
                         selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "inline";
                     }
+                    else {
+                        selfSignupConfigModal.querySelector("#modalSubmitButtonText").innerText = "Create rule";
+                    }
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").setAttribute("action", `/api/config/self-signup/${event.relatedTarget.dataset.categoryId}`);
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").addEventListener("submit", event => {
                         const submitButton = selfSignupConfigModal.querySelector("#modalSubmitButton");
@@ -163,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     selfSignupConfigModal.querySelector("#successInformation").style.display = "block";
                                     selfSignupConfigModal.querySelector("#errorInformation").style.display = "none";
                                     selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "inline";
+                                    selfSignupConfigModal.querySelector("#modalSubmitButtonText").innerText = "Save changes";
                                 }
                             });
                         
@@ -203,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     selfSignupConfigModal.querySelector("#successInformation").style.display = "block";
                                     selfSignupConfigModal.querySelector("#errorInformation").style.display = "none";
                                     selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "none";
+                                    selfSignupConfigModal.querySelector("#modalSubmitButtonText").innerText = "Create rule";
                                     selfSignupConfigModal.querySelector("#css_description").value = selfSignupConfigModal.querySelector("#css_description").getAttribute("data-default");
                                     selfSignupConfigModal.querySelector("#css_min_points").value = selfSignupConfigModal.querySelector("#css_min_points").getAttribute("data-default");
                                 }
