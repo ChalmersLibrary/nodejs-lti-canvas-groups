@@ -12,6 +12,7 @@ const db = require('../db');
 
 const canvasApiPath = "/api/v1";
 const CACHE_TTL = (parseInt(process.env.canvasApiCacheSecondsTTL) > 0 ? parseInt(process.env.canvasApiCacheSecondsTTL) : 900);
+const CACHE_TTL_SHORT = 30;
 const CACHE_CHECK_EXPIRE = 600;
 const API_PER_PAGE = 50;
 
@@ -27,7 +28,7 @@ const categoryGroupsCache = new NodeCache({ errorOnMissing:true, stdTTL: CACHE_T
 const memberCache = new NodeCache({ errorOnMissing:true, stdTTL: CACHE_TTL, checkperiod: CACHE_CHECK_EXPIRE });
 const userCache = new NodeCache({ errorOnMissing:true, stdTTL: CACHE_TTL, checkperiod: CACHE_CHECK_EXPIRE });
 const assignmentCache = new NodeCache({ errorOnMissing:true, stdTTL: CACHE_TTL, checkperiod: CACHE_CHECK_EXPIRE });
-const assignmentGradeCache = new NodeCache({ errorOnMissing: true, stdTTL: CACHE_TTL, checkperiod: CACHE_CHECK_EXPIRE });
+const assignmentGradeCache = new NodeCache({ errorOnMissing: true, stdTTL: CACHE_TTL_SHORT, checkperiod: CACHE_CHECK_EXPIRE });
 
 let caches = [
   {
@@ -1079,7 +1080,7 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, acc
     // Store in cache.
     assignmentGradeCache.set(assignmentId, cachedApiData);
   
-    log.debug("[Cache] Data cached for " + CACHE_TTL / 60 + " minutes: " + JSON.stringify(cachedApiData));
+    log.debug("[Cache] Data cached for " + CACHE_TTL_SHORT + " seconds: " + JSON.stringify(cachedApiData));
     log.debug("[Cache] Statistics: " + JSON.stringify(assignmentGradeCache.getStats()));
     log.debug("[Cache] Keys: " + assignmentGradeCache.keys());
 
