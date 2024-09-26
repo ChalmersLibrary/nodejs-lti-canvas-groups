@@ -121,14 +121,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.current && data.current.description) {
                         selfSignupConfigModal.querySelector("#css_description").value = data.current.description;
                     }
+                    else {
+                        selfSignupConfigModal.querySelector("#css_description").value = "";
+                    }
                     if (data.current && data.current.min_points) {
                         selfSignupConfigModal.querySelector("#css_min_points").value = data.current.min_points;
+                    }
+                    else {
+                        selfSignupConfigModal.querySelector("#css_min_points").value = "1";
                     }
                     if (data.current && selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display == "none") {
                         selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "inline";
                     }
                     else {
-                        selfSignupConfigModal.querySelector("#modalSubmitButtonText").innerText = "Create rule";
+                        selfSignupConfigModal.querySelector("#modalSubmitButtonText").innerText = "Create new rule";
                     }
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").setAttribute("action", `/api/config/self-signup/${event.relatedTarget.dataset.categoryId}`);
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").addEventListener("submit", event => {
