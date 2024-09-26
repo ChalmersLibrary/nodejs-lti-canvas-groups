@@ -537,7 +537,7 @@ module.exports.getGroupCategories = async (courseId, request) => new Promise(asy
           "Authorization": request.session.token.token_type + " " + request.session.token.access_token
         };
 
-        log.info(`[API] Headers: ${JSON.stringify(headers).slice(0, 80)}`);
+        log.info(`[API] GET Headers: ${JSON.stringify(headers).slice(0, 80)}`);
 
         const response = await axios.get(thisApiPath, {
           json: true,
@@ -627,7 +627,7 @@ exports.getCategoryGroups = async (categoryId, request, access_token) => new Pro
           "Authorization": access_token ? "Bearer " + access_token : request.session.token.token_type + " " + request.session.token.access_token
         };
 
-        log.info(`[API] Headers: ${JSON.stringify(headers).slice(0, 32)}`);
+        log.info(`[API] GET Headers: ${JSON.stringify(headers).slice(0, 80)}`);
 
         const response = await axios.get(thisApiPath, {
           json: true,
@@ -812,6 +812,8 @@ exports.getGroupMembers = async (groupId, request) => new Promise(async function
           }
         });
 
+        log.info(`[API] GET Headers: ${JSON.stringify(headers).slice(0, 80)}`);
+
         const data = response.data;
         apiData.push(data);
 
@@ -905,6 +907,8 @@ exports.getCourseAssignments = async (courseId, request) => new Promise(async fu
             "Authorization": request.session.token.token_type + " " + request.session.token.access_token
           }
         });
+
+        log.info(`[API] GET Headers: ${JSON.stringify(headers).slice(0, 80)}`);
 
         const data = response.data;
         apiData.push(data);
@@ -1016,7 +1020,7 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, acc
           "Authorization": access_token ? "Bearer " + access_token : request.session.token.token_type + " " + request.session.token.access_token
         };
         
-        log.info(JSON.stringify(headers));
+        log.info(`[API] GET Headers: ${JSON.stringify(headers).slice(0, 80)}`);
 
         const response = await axios.get(thisApiPath, {
           json: true,
