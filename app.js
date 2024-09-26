@@ -365,6 +365,8 @@ app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
             success: true,
             groups: groupData
         };
+
+        log.info(`[SelfSignupPublicApi] Course id ${request.params.course_id} user id ${request.params.user_id} returned ${JSON.stringify(returnedData)}`);
     }
     catch (error) {
         log.error(error);
