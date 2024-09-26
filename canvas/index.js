@@ -532,11 +532,16 @@ module.exports.getGroupCategories = async (courseId, request) => new Promise(asy
       log.info("[API] GET " + thisApiPath);
 
       try {
+        const headers = {
+          "User-Agent": "Chalmers/Azure/Request",
+          "Authorization": request.session.token.token_type + " " + request.session.token.access_token
+        };
+
+        log.info(`[API] Headers: ${JSON.stringify(headers).slice(0, 80)}`);
+
         const response = await axios.get(thisApiPath, {
-          headers: {
-            "User-Agent": "Chalmers/Azure/Request",
-            "Authorization": request.session.token.token_type + " " + request.session.token.access_token
-          }
+          json: true,
+          headers: headers
         });
 
         const data = response.data;
@@ -622,9 +627,7 @@ exports.getCategoryGroups = async (categoryId, request, access_token) => new Pro
           "Authorization": access_token ? "Bearer " + access_token : request.session.token.token_type + " " + request.session.token.access_token
         };
 
-        let logHeaders = headers;
-        logHeaders.Authorization = logHeaders.Authorization.slice(0, 16) + "...";
-        log.info(`[API] Headers: JSON.stringify(headers)`);
+        log.info(`[API] Headers: ${JSON.stringify(headers).slice(0, 32)}`);
 
         const response = await axios.get(thisApiPath, {
           json: true,
