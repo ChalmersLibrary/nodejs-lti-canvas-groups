@@ -132,6 +132,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     if (data.current && selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display == "none") {
                         selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "inline";
+                        selfSignupConfigModal.querySelector("#modalSubmitButtonText").innerText = "Save changes";
                     }
                     else {
                         selfSignupConfigModal.querySelector("#modalSubmitButtonText").innerText = "Create new rule";
