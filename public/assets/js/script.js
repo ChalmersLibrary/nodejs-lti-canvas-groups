@@ -130,11 +130,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     else {
                         selfSignupConfigModal.querySelector("#css_min_points").value = "1";
                     }
-                    if (data.current && selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display == "none") {
+                    if (data.current) {
                         selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "inline";
                         selfSignupConfigModal.querySelector("#modalSubmitButtonText").innerText = "Save changes";
                     }
                     else {
+                        selfSignupConfigModal.querySelector("#modalClearRuleButton").style.display = "none";
                         selfSignupConfigModal.querySelector("#modalSubmitButtonText").innerText = "Create new rule";
                     }
                     selfSignupConfigModal.querySelector("#selfSignupConfigurationForm").setAttribute("action", `/api/config/self-signup/${event.relatedTarget.dataset.categoryId}`);
