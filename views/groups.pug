@@ -39,6 +39,10 @@ html(lang='en')
                                 td #{user.sortableName}
                                 td #{user.email}
 
+              div(class='button-bar')
+                button(type='button' class='btn btn-primary btn-sm' id='btn-clear-caches' data-course-id=course.id) Clear all caches and reload
+                small Use this if you have added groups that don't show up here because of cacheing
+
             else
               h2 #{category.name}
               p There are no groups in this groupset.
