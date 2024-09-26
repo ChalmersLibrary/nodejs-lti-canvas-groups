@@ -1197,6 +1197,10 @@ exports.clearCourseCache = async (courseId, request) => new Promise(async functi
     const items = groupCategoriesCache.del(courseId);
     totalDeletedEntries = totalDeletedEntries + items;
 
+    const itemsAssignmentCache = assignmentCache.del(courseId);
+    totalDeletedEntries = totalDeletedEntries + itemsAssignmentCache;
+
+    log.info(`[Cache] Deleted ${items} NodeCache key in assignmentCache for courseId ${courseId}.`);
     log.info(`[Cache] Deleted ${items} NodeCache key for groupCategoriesCache id ${courseId}, in total ${totalDeletedEntries} entries in dependent caches.`);
 
     resolve();
