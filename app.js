@@ -497,6 +497,28 @@ app.get('/api/config/self-signup/:id/:name', async (request, response, next) => 
     }
 });
 
+/**
+ * API for clearing the caches for a course
+ */
+
+app.get('/api/config/clear-cache/:course_id', async(request, response) => {
+    if (request.session.userId) {
+        await canvas.clearCourseCache(request.params.course_id, request);
+
+        return response.send({
+            success: true
+        });
+    }
+    else {
+        log.error("No session found.");
+
+        return response.send({
+            success: false,
+            message: "No session, you must enable third-party cookies."
+        });
+    }
+});
+
 app.get('/csv/category/:id/:name', async(request, response, next) => {
     if (request.session.userId && request.session.canvasCourseId) {
         try {

@@ -424,7 +424,7 @@ module.exports.compileGroupsData = async (canvasCourseId, request) => new Promis
   resolve(data);
 });
 
-// Get groups for a specified course.
+// Get groups for a specified course (NOTE: this method is actually not used).
 exports.getCourseGroups = async (courseId, request) => new Promise(async function(resolve, reject) {
   try {
     const cachedData = courseGroupsCache.get(courseId);
@@ -1158,5 +1158,41 @@ exports.getUser = async (userId, request) => new Promise(async function(resolve,
     await exports.addCacheWrite('userCache');
 
     resolve(apiData[0]);
+  }
+});
+
+
+exports.clearCourseCache = async (courseId, request) => new Promise(async function(resolve, reject) {
+  let totalDeletedEntries = 0;
+
+  try 
+  {
+    await exports.getGroupCategories(courseId, request).then(async function (categoriesData) {
+      for (const category of categoriesData) {
+        await exports.getCategoryGroups(category.id, request).then(async function (groupsData) {
+          for (const group of groupsData) {
+            const items = groupUsersCache.del(group.id);
+            totalDeletedEntries = totalDeletedEntries + items;
+
+            log.info(`[Cache] Deleted ${items} NodeCache key in groupUsersCache id ${group.id}, courseId ${courseId}.`);
+          }
+        });
+        const items = categoryGroupsCache.del(category.id);
+        totalDeletedEntries = totalDeletedEntries + items;
+
+        log.info(`[Cache] Deleted ${items} NodeCache key in categoryGroupsCache id ${category.id}, courseId ${courseId}.`);
+      }
+    });
+
+    const items = groupCategoriesCache.del(courseId);
+    totalDeletedEntries = totalDeletedEntries + items;
+
+    log.info(`[Cache] Deleted ${items} NodeCache key for groupCategoriesCache id ${courseId}, in total ${totalDeletedEntries} entries in dependent caches.`);
+
+    resolve();
+  }
+  catch (error) {
+    log.error(`[Cache] Error: ${error} when deleting NodeCache entries for courseId ${courseId}.`);
+    reject(error);
   }
 });

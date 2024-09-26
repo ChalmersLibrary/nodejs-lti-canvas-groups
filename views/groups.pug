@@ -13,39 +13,43 @@ html(lang='en')
     .container-fluid
       .row
         .col-lg-12.text-left
-          each category in course.categories
-            if category.groups
-              h2 #{category.name}
+          if course.categories.length
+            each category in course.categories
+              if category.groups
+                h2 #{category.name}
 
-              div(class='button-bar')
-                  if category.self_signup.enabled
-                    button(type='button' class='btn btn-primary btn-sm btn-configure-self-signup' data-bs-toggle='modal' data-bs-target='#selfSignupConfigurationModal' data-category-id=category.id data-category-name=category.name) Self signup rule
-                  button(type='button' class='btn btn-primary btn-sm btn-download-csv' data-category-id=category.id data-category-name=category.name) Download CSV for Excel
-                  button(type='button' class='btn btn-primary btn-sm btn-download-csv-zoom' data-category-id=category.id data-category-name=category.name) Download CSV for Zoom Breakout Rooms
-                  small Note: Students with custom email (ie Gmail) are not matched automatically in Zoom
+                div(class='button-bar')
+                    if category.self_signup.enabled
+                      button(type='button' class='btn btn-primary btn-sm btn-configure-self-signup' data-bs-toggle='modal' data-bs-target='#selfSignupConfigurationModal' data-category-id=category.id data-category-name=category.name) Self signup rule
+                    button(type='button' class='btn btn-primary btn-sm btn-download-csv' data-category-id=category.id data-category-name=category.name) Download CSV for Excel
+                    button(type='button' class='btn btn-primary btn-sm btn-download-csv-zoom' data-category-id=category.id data-category-name=category.name) Download CSV for Zoom Breakout Rooms
+                    small Note: Students with custom email (ie Gmail) are not matched automatically in Zoom
 
-              table(class='table table-sm')
-                  thead
-                    tr
-                        th Group
-                        th Student
-                        th Email address
+                table(class='table table-sm')
+                    thead
+                      tr
+                          th Group
+                          th Student
+                          th Email address
 
-                  tbody
-                    each group in category.groups
-                        each user in group.users
-                            tr
-                                td #{group.name}
-                                td #{user.sortableName}
-                                td #{user.email}
+                    tbody
+                      each group in category.groups
+                          each user in group.users
+                              tr
+                                  td #{group.name}
+                                  td #{user.sortableName}
+                                  td #{user.email}
 
-              div(class='button-bar')
+              else
+                h2 #{category.name}
+                p There are no groups in this groupset.
+
+            hr
+
+            div(class='button-bar')
                 button(type='button' class='btn btn-primary btn-sm' id='btn-clear-caches' data-course-id=course.id) Clear all caches and reload
-                small Use this if you have added groups that don't show up here because of cacheing
-
-            else
-              h2 #{category.name}
-              p There are no groups in this groupset.
+                  span(id="clearCachesButtonSpinner" class="spinner-border spinner-border-sm ms-1" style="display:none;" role="status" aria-hidden="true")
+                small Use this if you have added groups recently that don't show up in the list
 
           else
             h2 Group Tool

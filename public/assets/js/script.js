@@ -6,6 +6,16 @@ function downloadCsvZoom(categoryId, categoryName) {
     window.location.href = "/csv/zoom/category/" + categoryId + "/" + categoryName.replace("/", "-").replace(" ", "%20");
 }
 
+function clearCaches(courseId) {
+    document.querySelector("#clearCachesButtonSpinner").style.display = "inline-block";
+    document.querySelector("#btn-clear-caches").disabled = "true";
+    
+    fetch(`/api/config/clear-cache/${courseId}`).then(response => response.json()).then(data => {
+        console.log(data);
+        window.location.href = "/groups";
+    });
+}
+
 function renderDashboard() {
     if (document.getElementById('chartContainer')) {
         let data_labels = [];
@@ -81,15 +91,22 @@ document.addEventListener('DOMContentLoaded', function () {
     else if (document.location.pathname.startsWith("/groups")) {
         const btnCsv = document.getElementsByClassName("btn-download-csv");
         const btnCsvZoom = document.getElementsByClassName("btn-download-csv-zoom");
+        const btnClearCaches = document.getElementById("btn-clear-caches");
+
         Array.from(btnCsv).forEach(element => {
             element.addEventListener("click", function () {
                 downloadCsv(element.getAttribute("data-category-id"), element.getAttribute("data-category-name"));
             }); 
         });
+
         Array.from(btnCsvZoom).forEach(element => {
             element.addEventListener("click", function () {
                 downloadCsvZoom(element.getAttribute("data-category-id"), element.getAttribute("data-category-name"));
             });
+        });
+
+        btnClearCaches.addEventListener("click", function () {
+            clearCaches(btnClearCaches.getAttribute("data-course-id"));
         });
 
         const selfSignupConfigModal = document.getElementById('selfSignupConfigurationModal');
