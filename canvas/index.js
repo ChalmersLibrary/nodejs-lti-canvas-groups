@@ -621,8 +621,10 @@ exports.getCategoryGroups = async (categoryId, request, access_token) => new Pro
           "User-Agent": "Chalmers/Azure/Request",
           "Authorization": access_token ? "Bearer " + access_token : request.session.token.token_type + " " + request.session.token.access_token
         };
-        
-        log.info(JSON.stringify(headers));
+
+        let logHeaders = headers;
+        logHeaders.Authorization = logHeaders.Authorization.slice(0, 16) + "...";
+        log.info(`[API] Headers: JSON.stringify(headers)`);
 
         const response = await axios.get(thisApiPath, {
           json: true,
