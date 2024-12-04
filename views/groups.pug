@@ -93,7 +93,7 @@ html(lang='en')
                           div(class="form-text") Displayed for a student trying to self signup when it's locked.
                       div(class="col-lg-4" style="border-left:1px solid lightgrey; padding-left:12px;")
                         p A student can only signup to a group in this set if a submission exists for the selected assignment and the grading is min points or higher.
-                        p <strong>Please note:</strong> this feature is experimental. Your course needs to be added to the Group Tool database in order for this to work.
+                        p Be aware that this feature might fail, since it depends on an external service. If the server request fails, a student might still be able to join a group because the system don't know if to show or hide the Join button.
                     div(class="row")
                       div(class="col-lg-12 pt-4")
                         div(class="alert alert-success" id="successInformation" style="display:none;")
