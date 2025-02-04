@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function () {
         selfSignupConfigModal && selfSignupConfigModal.addEventListener("show.bs.modal", event => {
             console.log(event);
             selfSignupConfigModal.querySelector("#css_group_category_name").innerText = event.relatedTarget.dataset.categoryName;
-            fetch(`/api/config/self-signup/${event.relatedTarget.dataset.categoryId}/${event.relatedTarget.dataset.categoryName}`)
+            fetch(`/api/config/self-signup/${event.relatedTarget.dataset.categoryId}/${encodeURIComponent(event.relatedTarget.dataset.categoryName)}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log(data); // TODO: debug
