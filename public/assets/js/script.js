@@ -112,6 +112,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const selfSignupConfigModal = document.getElementById('selfSignupConfigurationModal');
         selfSignupConfigModal && selfSignupConfigModal.addEventListener("show.bs.modal", event => {
             console.log(event);
+            
+            const selfSignupConfigForm = document.getElementById("selfSignupConfigurationForm");
+            const newSelfSignupConfigForm = selfSignupConfigForm.cloneNode(true);
+            selfSignupConfigForm.replaceWith(newSelfSignupConfigForm);
+
             selfSignupConfigModal.querySelector("#css_group_category_name").innerText = event.relatedTarget.dataset.categoryName;
             fetch(`/api/config/self-signup/${event.relatedTarget.dataset.categoryId}/${encodeURIComponent(event.relatedTarget.dataset.categoryName)}`)
                 .then(response => response.json())
