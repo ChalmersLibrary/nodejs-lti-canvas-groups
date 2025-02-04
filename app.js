@@ -385,6 +385,8 @@ app.delete('/api/config/self-signup/:id', async (request, response, next) => {
         try {
             await db.clearSelfSignupConfig(request.session.canvasCourseId, request.params.id);
 
+            log.info(`[SelfSignupConfig] Course id ${request.session.canvasCourseId} rule id ${request.params.id} cleared.`);
+
             responseData = {
                 success: true,
                 message: "Self signup rule cleared."
@@ -430,6 +432,8 @@ app.put('/api/config/self-signup/:id', async (request, response, next) => {
 
             const writtenData = await db.getSelfSignupConfig(request.session.canvasCourseId, request.params.id);
 
+            log.info(`[SelfSignupConfig] Course id ${request.session.canvasCourseId} rule id ${request.params.id} created/updated.`);
+            
             responseData = {
                 success: true,
                 message: "Rule was created or updated.",
