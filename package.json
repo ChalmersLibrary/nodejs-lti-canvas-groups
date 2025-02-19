@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "start": "node app",
-    "dev": "nodemon --ignore 'db/*.sqlite3*' --ignore log/logfiles/ --ignore sessions/ app.js",
+    "dev-old": "nodemon --ignore 'db/*.sqlite3*' --ignore log/logfiles/ --ignore sessions/ app.js",
+    "dev": "node --watch app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Rolf Johansson",
@@ -25,8 +26,5 @@
     "session-file-store": "^1.5.0",
     "sqlite3": "^5.1.6",
     "winston": "^3.3.3"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.22"
   }
 }
