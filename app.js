@@ -466,7 +466,7 @@ app.put('/api/config/self-signup/:id', async (request, response, next) => {
     }
 });
 
-app.get('/api/config/self-signup/:id/:name', async (request, response, next) => {
+app.get('/api/config/self-signup/:id/:name(*)', async (request, response, next) => {
     if (request.session.userId && request.session.canvasCourseId) {
         try {
             const data = {
