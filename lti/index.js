@@ -266,8 +266,6 @@ exports.handleLaunch = (page) => function(req, res, next) {
                         .catch((error) => {
                             log.error(error);
                             log.info("[Session] No token data in db for user_id '" + provider.userId + "', forcing OAuth flow.");
-                            console.log("Session before redirect:");
-                            console.log(req.session);
                             res.redirect('/oauth');
                         });
                 }

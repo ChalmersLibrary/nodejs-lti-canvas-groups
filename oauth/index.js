@@ -42,10 +42,10 @@ exports.providerRequestToken = async(request) => new Promise(function(resolve, r
     const requestState = request.query.state;
     const requestError = request.query.error;
 
-    log.info("[OAuth] Request token: '" + requestCode + "', state: '" + requestState + "', error: '" + requestError + "'");
+    log.info("[OAuth] Request token for state: '" + requestState + "', error: '" + requestError + "'");
 
     if (requestCode !== 'undefined') {
-        console.log(request.session);
+        log.info("[OAuth] Session id " + request.session.id + ", user_id '" + request.session.userId + "', course id " + request.session.canvasCourseId + ".");
 
         if (request.session.userId && request.session.canvasCourseId) {
             if (requestState == clientState) {
