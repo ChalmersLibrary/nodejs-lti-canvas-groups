@@ -244,6 +244,18 @@ exports.noSessionTokenError = () => {
   return error;
 };
 
+/**
+ * Error used when the token can not be refreshed, so callers can send the user through OAuth
+ * again. Canvas answers a refresh with http 400 when the approved integration behind the token
+ * is gone, which the user can remove themselves in their Canvas settings at any time.
+ */
+exports.reauthorizationNeededError = () => {
+  let error = new Error("The token could not be refreshed, reauthorization is needed.");
+  error.name = "ReauthorizationNeededError";
+
+  return error;
+};
+
 exports.cacheStat = async () => asyncPromise(async function (resolve, reject) {
   for (const cache of caches) {
     log.info("[Stats] Cache keys and TTL for " + cache.name + ":");
@@ -554,7 +566,13 @@ exports.getCourseGroups = async (courseId, request) => asyncPromise(async functi
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          await oauth.providerRefreshToken(request);
+          try {
+            await oauth.providerRefreshToken(request);
+          }
+          catch (refreshError) {
+            log.error("[API] The token could not be refreshed: " + refreshError);
+            return reject(exports.reauthorizationNeededError());
+          }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
@@ -649,7 +667,13 @@ module.exports.getGroupCategories = async (courseId, request) => asyncPromise(as
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          await oauth.providerRefreshToken(request);
+          try {
+            await oauth.providerRefreshToken(request);
+          }
+          catch (refreshError) {
+            log.error("[API] The token could not be refreshed: " + refreshError);
+            return reject(exports.reauthorizationNeededError());
+          }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
@@ -747,7 +771,13 @@ exports.getCategoryGroups = async (categoryId, request, access_token) => asyncPr
           log.error("Group category not found, possibly deleted referenced from self signup config. Returning empty data.");
         }
         else if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          await oauth.providerRefreshToken(request);
+          try {
+            await oauth.providerRefreshToken(request);
+          }
+          catch (refreshError) {
+            log.error("[API] The token could not be refreshed: " + refreshError);
+            return reject(exports.reauthorizationNeededError());
+          }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
@@ -838,7 +868,13 @@ exports.getGroupUsers = async (groupId, request) => asyncPromise(async function(
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          await oauth.providerRefreshToken(request);
+          try {
+            await oauth.providerRefreshToken(request);
+          }
+          catch (refreshError) {
+            log.error("[API] The token could not be refreshed: " + refreshError);
+            return reject(exports.reauthorizationNeededError());
+          }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
@@ -931,7 +967,13 @@ exports.getGroupMembers = async (groupId, request) => asyncPromise(async functio
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          await oauth.providerRefreshToken(request);
+          try {
+            await oauth.providerRefreshToken(request);
+          }
+          catch (refreshError) {
+            log.error("[API] The token could not be refreshed: " + refreshError);
+            return reject(exports.reauthorizationNeededError());
+          }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
@@ -1033,7 +1075,13 @@ exports.getCourseAssignments = async (courseId, request) => asyncPromise(async f
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          await oauth.providerRefreshToken(request);
+          try {
+            await oauth.providerRefreshToken(request);
+          }
+          catch (refreshError) {
+            log.error("[API] The token could not be refreshed: " + refreshError);
+            return reject(exports.reauthorizationNeededError());
+          }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
@@ -1154,7 +1202,13 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, acc
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          await oauth.providerRefreshToken(request);
+          try {
+            await oauth.providerRefreshToken(request);
+          }
+          catch (refreshError) {
+            log.error("[API] The token could not be refreshed: " + refreshError);
+            return reject(exports.reauthorizationNeededError());
+          }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
@@ -1249,7 +1303,13 @@ exports.getUser = async (userId, request) => asyncPromise(async function(resolve
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          await oauth.providerRefreshToken(request);
+          try {
+            await oauth.providerRefreshToken(request);
+          }
+          catch (refreshError) {
+            log.error("[API] The token could not be refreshed: " + refreshError);
+            return reject(exports.reauthorizationNeededError());
+          }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");

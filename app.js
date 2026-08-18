@@ -323,8 +323,8 @@ app.get('/groups', async (request, response, next) => {
         } catch (error) {
             log.error(error);
 
-            if (error.name == 'NoSessionTokenError') {
-                log.info("[Session] No OAuth token in session, forcing OAuth flow.");
+            if (error.name == 'NoSessionTokenError' || error.name == 'ReauthorizationNeededError') {
+                log.info("[Session] " + error.message + " Forcing OAuth flow.");
                 return response.redirect('/oauth');
             }
             else if (error.response?.status == 401) {
