@@ -180,22 +180,39 @@ const asyncPromise = (executor) => new Promise(function(resolve, reject) {
 });
 
 /**
+ * True when the token is known to have expired. A token without an expiry, like the one
+ * used for local development, is never treated as expired.
+ */
+const tokenHasExpired = (token) => {
+  if (!token?.expires_at_utc) {
+    return false;
+  }
+
+  const expires = new Date(token.expires_at_utc);
+
+  return !isNaN(expires.getTime()) && expires < new Date();
+};
+
+/**
  * Returns the OAuth token to use for API calls, or false if there is none.
  *
- * The session is not a reliable place to keep the token; the session file is written by
- * several requests at once and a write can land after another one has already added the
- * token, leaving a session with user data but no token. The database is written at the
- * same time as the session in the OAuth flow, so it is used to restore the token when
- * the session has lost it. An expired token is handled where it is used, by the normal
- * 401 handling that refreshes it.
+ * The database is the source of truth for the token and the session is only a cache of it.
+ * The session file is written by several requests at once and a write can land after another
+ * one that had already updated the token, so a session can hold no token at all or a token
+ * that was replaced by a refresh in a request just before this one. Every refresh writes to
+ * the database first, so it always has the current token, and it is read whenever the session
+ * has nothing usable. A token that is expired in the database as well is still returned; it is
+ * refreshed by the normal 401 handling where it is used.
  */
 exports.sessionToken = async (request) => {
-  if (request?.session?.token?.access_token) {
-    return request.session.token;
+  const sessionToken = request?.session?.token?.access_token ? request.session.token : false;
+
+  if (sessionToken && !tokenHasExpired(sessionToken)) {
+    return sessionToken;
   }
 
   if (!request?.session?.userId) {
-    return false;
+    return sessionToken;
   }
 
   try {
@@ -203,14 +220,17 @@ exports.sessionToken = async (request) => {
 
     request.session.token = tokenData;
 
-    log.info("[Session] Session had no token data, restored it from database for user_id '" + request.session.userId + "'.");
+    log.info("[Session] " + (sessionToken
+      ? "Session token had expired, replaced it with the token in database"
+      : "Session had no token data, restored it from the database") +
+      " for user_id '" + request.session.userId + "', expires: " + tokenData.expires_at_utc + ".");
 
     return tokenData;
   }
   catch (error) {
-    log.info("[Session] Session has no token data and there is none in the database for user_id '" + request.session.userId + "': " + error);
+    log.info("[Session] No usable token in session and none in the database for user_id '" + request.session.userId + "': " + error);
 
-    return false;
+    return sessionToken;
   }
 };
 
