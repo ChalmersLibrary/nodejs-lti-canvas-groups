@@ -319,7 +319,11 @@ app.get('/groups', async (request, response, next) => {
         } catch (error) {
             log.error(error);
 
-            if (error.response.status == 401) {
+            if (error.name == 'NoSessionTokenError') {
+                log.info("[Session] No OAuth token in session, forcing OAuth flow.");
+                return response.redirect('/oauth');
+            }
+            else if (error.response?.status == 401) {
                 try {
                     return response.redirect(oauth.providerLogin());
                 } catch (error) {
@@ -395,7 +399,7 @@ app.delete('/api/config/self-signup/:id', async (request, response, next) => {
         catch (error) {
             log.error(error);
 
-            if (error.response.status == 401) {
+            if (error.response?.status == 401) {
                 try {
                     return response.redirect(oauth.providerLogin());
                 }
@@ -487,7 +491,7 @@ app.get('/api/config/self-signup/:id/:name(*)', async (request, response, next) 
         catch (error) {
             log.error(error);
 
-            if (error.response.status == 401) {
+            if (error.response?.status == 401) {
                 try {
                     return response.redirect(oauth.providerLogin());
                 } catch (error) {
@@ -593,6 +597,12 @@ app.post('/launch_lti', lti.handleLaunch('loading/groups'));
 app.post('/launch_lti_stats', lti.handleLaunch('loading/dashboard'));
 
 app.listen(port, () => log.info(`[Main] Application listening on port ${port}.`));
+
+/* A rejected promise that no one handles must not take the application down for */
+/* every user; it only concerns the request that caused it.                      */
+process.on('unhandledRejection', (reason) => {
+    log.error('[Main] Unhandled promise rejection: ' + (reason && reason.stack ? reason.stack : reason));
+});
 
 process.on('uncaughtException', (err) => {
     console.error('[Main] There was an uncaught error', err);

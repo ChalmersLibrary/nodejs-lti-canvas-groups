@@ -128,9 +128,10 @@ exports.handleLaunch = (page) => function(req, res, next) {
                     req.session.canvasLocale = provider.body.launch_presentation_locale;
                     req.session.canvasApiDomain = provider.body.custom_canvas_api_domain;
 
-                    req.session.save(function(err) {
-                        log.info("[LTI] Updated session id: " + req.session.id);
-                    });
+                    /* No explicit save here: express-session writes the session when the  */
+                    /* response ends, and an extra save writes a snapshot of the session  */
+                    /* as it looks right now, which can overwrite the token written later. */
+                    log.info("[LTI] Updated session id: " + req.session.id);
 
                     log.info("[Session] Context is " + req.session.contextId + ", course id " + req.session.canvasCourseId + ", " + req.session.contextTitle);
 
@@ -206,9 +207,10 @@ exports.handleLaunch = (page) => function(req, res, next) {
                     req.session.canvasLocale = provider.body.launch_presentation_locale;
                     req.session.canvasApiDomain = provider.body.custom_canvas_api_domain;
 
-                    req.session.save(function(err) {
-                        log.info("[LTI] Saved session id: " + req.session.id);
-                    });
+                    /* No explicit save here: it snapshots the session before the token is  */
+                    /* added below, and that write can land after the save that express-   */
+                    /* session does when the response ends, leaving a session without token. */
+                    log.info("[LTI] Session id: " + req.session.id);
 
                     if (debugLogging) {
                         log.info(JSON.stringify(req.session));

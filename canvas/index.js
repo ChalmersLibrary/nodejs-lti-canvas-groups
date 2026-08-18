@@ -170,7 +170,34 @@ exports.apiPath = (request) => {
   }
 };
 
-exports.cacheStat = async () => new Promise(async function (resolve, reject) {
+/**
+ * Wrapper for promises with an async executor. A throw inside such an executor rejects the
+ * executor's own promise, not the one returned to the caller, so it escapes as an unhandled
+ * rejection and takes the whole application down. This makes it reject the caller's promise.
+ */
+const asyncPromise = (executor) => new Promise(function(resolve, reject) {
+  executor(resolve, reject).catch(reject);
+});
+
+/**
+ * Returns the OAuth token from the session, or false if the session has no usable token.
+ * A session can be missing its token data, and API calls must then fail in a controlled way.
+ */
+exports.sessionToken = (request) => {
+  return request?.session?.token?.access_token ? request.session.token : false;
+};
+
+/**
+ * Error used when the session has no token, so callers can send the user through OAuth again.
+ */
+exports.noSessionTokenError = () => {
+  let error = new Error("No OAuth token in session, reauthorization is needed.");
+  error.name = "NoSessionTokenError";
+
+  return error;
+};
+
+exports.cacheStat = async () => asyncPromise(async function (resolve, reject) {
   for (const cache of caches) {
     log.info("[Stats] Cache keys and TTL for " + cache.name + ":");
 
@@ -213,7 +240,7 @@ exports.addCacheWrite = (cacheName) => {
   })
 };
 
-module.exports.getCacheStat = async () => new Promise(async function (resolve, reject) {
+module.exports.getCacheStat = async () => asyncPromise(async function (resolve, reject) {
   var cacheList = [];
 
   for (const cache of caches) {
@@ -252,7 +279,7 @@ module.exports.getCacheStat = async () => new Promise(async function (resolve, r
 /**
  * Compile category groups data for CSV export.
  */
-module.exports.compileCategoryGroupsData = async (categoryId, request) => new Promise(async function(resolve, reject) {
+module.exports.compileCategoryGroupsData = async (categoryId, request) => asyncPromise(async function(resolve, reject) {
   var hrstart = process.hrtime();
   var categoriesWithGroups = new Array();
   var groupsWithUsers = new Array();
@@ -330,7 +357,7 @@ module.exports.compileCategoryGroupsData = async (categoryId, request) => new Pr
 /** 
  * Compile groups data for web view.
  */
-module.exports.compileGroupsData = async (canvasCourseId, request) => new Promise(async function(resolve, reject) {
+module.exports.compileGroupsData = async (canvasCourseId, request) => asyncPromise(async function(resolve, reject) {
   var hrstart = process.hrtime();
   var categoriesWithGroups = new Array();
 
@@ -426,7 +453,7 @@ module.exports.compileGroupsData = async (canvasCourseId, request) => new Promis
 });
 
 // Get groups for a specified course (NOTE: this method is actually not used).
-exports.getCourseGroups = async (courseId, request) => new Promise(async function(resolve, reject) {
+exports.getCourseGroups = async (courseId, request) => asyncPromise(async function(resolve, reject) {
   try {
     const cachedData = courseGroupsCache.get(courseId);
 
@@ -442,6 +469,10 @@ exports.getCourseGroups = async (courseId, request) => new Promise(async functio
     var apiData = [];
     var returnedApiData = [];
     var errorCount = 0;
+
+    if (!exports.sessionToken(request)) {
+      return reject(exports.noSessionTokenError());
+    }
 
     while (errorCount < 4 && thisApiPath && request.session.token.access_token) {
       log.info("[API] GET " + thisApiPath);
@@ -475,10 +506,10 @@ exports.getCourseGroups = async (courseId, request) => new Promise(async functio
         errorCount++;
         log.error("[API] Error: " + error);
 
-        if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+        if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
           await oauth.providerRefreshToken(request);
         }
-        else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
+        else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
           log.error(JSON.stringify(error));
           reject(error);
@@ -512,7 +543,7 @@ exports.getCourseGroups = async (courseId, request) => new Promise(async functio
 });
 
 // Get group categories for a specified course.
-module.exports.getGroupCategories = async (courseId, request) => new Promise(async function(resolve, reject) {
+module.exports.getGroupCategories = async (courseId, request) => asyncPromise(async function(resolve, reject) {
   try {
     const cachedData = groupCategoriesCache.get(courseId);
 
@@ -528,6 +559,10 @@ module.exports.getGroupCategories = async (courseId, request) => new Promise(asy
     var apiData = new Array();
     var returnedApiData = new Array();
     var errorCount = 0;
+
+    if (!exports.sessionToken(request)) {
+      return reject(exports.noSessionTokenError());
+    }
 
     while (errorCount < 4 && thisApiPath && request.session.token.access_token) {
       log.info("[API] GET " + thisApiPath);
@@ -566,10 +601,10 @@ module.exports.getGroupCategories = async (courseId, request) => new Promise(asy
         errorCount++;
         log.error("[API] Error: " + error);
 
-        if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+        if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
           await oauth.providerRefreshToken(request);
         }
-        else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
+        else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
           log.error(JSON.stringify(error));
           reject(error);
@@ -602,7 +637,7 @@ module.exports.getGroupCategories = async (courseId, request) => new Promise(asy
 });
 
 // Get groups for a specified category.
-exports.getCategoryGroups = async (categoryId, request, access_token) => new Promise(async function(resolve, reject) {
+exports.getCategoryGroups = async (categoryId, request, access_token) => asyncPromise(async function(resolve, reject) {
   try {
     const cachedData = categoryGroupsCache.get(categoryId);
 
@@ -656,14 +691,14 @@ exports.getCategoryGroups = async (categoryId, request, access_token) => new Pro
         errorCount++;
         log.error("[API] Error: " + error);
 
-        if (error.response.status == 404) {
+        if (error.response?.status == 404) {
           thisApiPath = false;
           log.error("Group category not found, possibly deleted referenced from self signup config. Returning empty data.");
         }
-        else if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+        else if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
           await oauth.providerRefreshToken(request);
         }
-        else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
+        else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
           log.error(JSON.stringify(error));
           reject(error);
@@ -697,7 +732,7 @@ exports.getCategoryGroups = async (categoryId, request, access_token) => new Pro
 });
 
 // Get users (not members) for a specified group.
-exports.getGroupUsers = async (groupId, request) => new Promise(async function(resolve, reject) {
+exports.getGroupUsers = async (groupId, request) => asyncPromise(async function(resolve, reject) {
   try {
     const cachedData = groupUsersCache.get(groupId);
 
@@ -713,6 +748,10 @@ exports.getGroupUsers = async (groupId, request) => new Promise(async function(r
     var apiData = [];
     var returnedApiData = [];
     var errorCount = 0;
+
+    if (!exports.sessionToken(request)) {
+      return reject(exports.noSessionTokenError());
+    }
 
     while (errorCount < 4 && thisApiPath && request.session.token.access_token) {
       log.info("[API] GET " + thisApiPath);
@@ -747,10 +786,10 @@ exports.getGroupUsers = async (groupId, request) => new Promise(async function(r
         errorCount++;
         log.error("[API] Error: " + error);
 
-        if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+        if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
           await oauth.providerRefreshToken(request);
         }
-        else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
+        else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
           log.error(JSON.stringify(error));
           reject(error);
@@ -784,7 +823,7 @@ exports.getGroupUsers = async (groupId, request) => new Promise(async function(r
 });
 
 // Get memberships data for a specified group.
-exports.getGroupMembers = async (groupId, request) => new Promise(async function(resolve, reject) {
+exports.getGroupMembers = async (groupId, request) => asyncPromise(async function(resolve, reject) {
   try {
     const cachedData = memberCache.get(groupId);
 
@@ -800,6 +839,10 @@ exports.getGroupMembers = async (groupId, request) => new Promise(async function
     var apiData = [];
     var returnedApiData = [];
     var errorCount = 0;
+
+    if (!exports.sessionToken(request)) {
+      return reject(exports.noSessionTokenError());
+    }
 
     while (errorCount < 4 && thisApiPath && request.session.token.access_token) {
       log.info("[API] GET " + thisApiPath);
@@ -836,10 +879,10 @@ exports.getGroupMembers = async (groupId, request) => new Promise(async function
         errorCount++;
         log.error("[API] Error: " + error);
 
-        if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+        if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
           await oauth.providerRefreshToken(request);
         }
-        else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
+        else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
           log.error(JSON.stringify(error));
           reject(error);
@@ -880,7 +923,7 @@ exports.getGroupMembers = async (groupId, request) => new Promise(async function
  * @param {Object} request 
  * @returns Valid assignments in course to use with Group Rule.
  */
-exports.getCourseAssignments = async (courseId, request) => new Promise(async function(resolve, reject) {
+exports.getCourseAssignments = async (courseId, request) => asyncPromise(async function(resolve, reject) {
   try {
     const cachedData = assignmentCache.get(courseId);
 
@@ -896,6 +939,10 @@ exports.getCourseAssignments = async (courseId, request) => new Promise(async fu
     var apiData = [];
     var returnedApiData = [];
     var errorCount = 0;
+
+    if (!exports.sessionToken(request)) {
+      return reject(exports.noSessionTokenError());
+    }
 
     while (errorCount < 4 && thisApiPath && request.session.token.access_token) {
       log.info("[API] GET " + thisApiPath);
@@ -934,10 +981,10 @@ exports.getCourseAssignments = async (courseId, request) => new Promise(async fu
         errorCount++;
         log.error("[API] Error: " + error);
 
-        if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+        if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
           await oauth.providerRefreshToken(request);
         }
-        else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
+        else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
           log.error(JSON.stringify(error));
           reject(error);
@@ -989,7 +1036,7 @@ exports.getCourseAssignments = async (courseId, request) => new Promise(async fu
  * @param {Object} request 
  * @returns Grade and related information.
  */
-exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, access_token) => new Promise(async function(resolve, reject) {
+exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, access_token) => asyncPromise(async function(resolve, reject) {
   try {
     const cachedData = assignmentGradeCache.get(assignmentId);
     var returnedData = {};
@@ -1051,10 +1098,10 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, acc
         errorCount++;
         log.error("[API] Error: " + error);
 
-        if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+        if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
           await oauth.providerRefreshToken(request);
         }
-        else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
+        else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
           log.error(JSON.stringify(error));
           reject(error);
@@ -1100,7 +1147,7 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, acc
 
 
 // Get details about one specified user.
-exports.getUser = async (userId, request) => new Promise(async function(resolve, reject) {
+exports.getUser = async (userId, request) => asyncPromise(async function(resolve, reject) {
   try {
     const cachedData = userCache.get(userId);
     log.info("[Cache] Using found NodeCache entry for userId " + userId + ".");
@@ -1146,10 +1193,10 @@ exports.getUser = async (userId, request) => new Promise(async function(resolve,
         errorCount++;
         log.error("[API] Error: " + error);
 
-        if (error.response.status == 401 && error.response.headers['www-authenticate']) { // refresh token, then try again
+        if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
           await oauth.providerRefreshToken(request);
         }
-        else if (error.response.status == 401 && !error.response.headers['www-authenticate']) { // no access, redirect to auth
+        else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
           log.error("[API] Not authorized in Canvas for use of this API endpoint.");
           log.error(JSON.stringify(error));
           reject(error);
@@ -1174,7 +1221,7 @@ exports.getUser = async (userId, request) => new Promise(async function(resolve,
 });
 
 
-exports.clearCourseCache = async (courseId, request) => new Promise(async function(resolve, reject) {
+exports.clearCourseCache = async (courseId, request) => asyncPromise(async function(resolve, reject) {
   let totalDeletedEntries = 0;
 
   try 
