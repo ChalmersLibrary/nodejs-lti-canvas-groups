@@ -211,15 +211,9 @@ exports.sessionToken = async (request) => {
     return sessionToken;
   }
 
-  if (!request?.session?.userId) {
-    return sessionToken;
-  }
+  const tokenData = await exports.tokenFromDatabase(request);
 
-  try {
-    const tokenData = await db.getClientData(request.session.userId, exports.providerEnvironment(request));
-
-    request.session.token = tokenData;
-
+  if (tokenData) {
     log.info("[Session] " + (sessionToken
       ? "Session token had expired, replaced it with the token in database"
       : "Session had no token data, restored it from the database") +
@@ -227,10 +221,31 @@ exports.sessionToken = async (request) => {
 
     return tokenData;
   }
-  catch (error) {
-    log.info("[Session] No usable token in session and none in the database for user_id '" + request.session.userId + "': " + error);
 
-    return sessionToken;
+  return sessionToken;
+};
+
+/**
+ * Reads the current token from the database and puts it in the session, or returns false if
+ * there is none. Used both when the session has nothing usable and when Canvas rejects the
+ * token that was used, since another request may have stored a new one in between.
+ */
+exports.tokenFromDatabase = async (request) => {
+  if (!request?.session?.userId) {
+    return false;
+  }
+
+  try {
+    const tokenData = await db.getClientData(request.session.userId, exports.providerEnvironment(request));
+
+    request.session.token = tokenData;
+
+    return tokenData;
+  }
+  catch (error) {
+    log.info("[Session] No token in the database for user_id '" + request.session.userId + "': " + error);
+
+    return false;
   }
 };
 
@@ -566,12 +581,23 @@ exports.getCourseGroups = async (courseId, request) => asyncPromise(async functi
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          try {
-            await oauth.providerRefreshToken(request);
+          /* Another request may have stored a new token just before this one, and the      */
+          /* session can still be serving the token it held before that. Only refresh when  */
+          /* the database holds the same token that Canvas just rejected.                   */
+          const rejectedToken = request.session?.token?.access_token;
+          const currentToken = await exports.tokenFromDatabase(request);
+
+          if (currentToken && currentToken.access_token != rejectedToken) {
+            log.info("[API] The token had already been replaced, continuing with the one in database.");
           }
-          catch (refreshError) {
-            log.error("[API] The token could not be refreshed: " + refreshError);
-            return reject(exports.reauthorizationNeededError());
+          else {
+            try {
+              await oauth.providerRefreshToken(request);
+            }
+            catch (refreshError) {
+              log.error("[API] The token could not be refreshed: " + refreshError);
+              return reject(exports.reauthorizationNeededError());
+            }
           }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
@@ -667,12 +693,23 @@ module.exports.getGroupCategories = async (courseId, request) => asyncPromise(as
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          try {
-            await oauth.providerRefreshToken(request);
+          /* Another request may have stored a new token just before this one, and the      */
+          /* session can still be serving the token it held before that. Only refresh when  */
+          /* the database holds the same token that Canvas just rejected.                   */
+          const rejectedToken = request.session?.token?.access_token;
+          const currentToken = await exports.tokenFromDatabase(request);
+
+          if (currentToken && currentToken.access_token != rejectedToken) {
+            log.info("[API] The token had already been replaced, continuing with the one in database.");
           }
-          catch (refreshError) {
-            log.error("[API] The token could not be refreshed: " + refreshError);
-            return reject(exports.reauthorizationNeededError());
+          else {
+            try {
+              await oauth.providerRefreshToken(request);
+            }
+            catch (refreshError) {
+              log.error("[API] The token could not be refreshed: " + refreshError);
+              return reject(exports.reauthorizationNeededError());
+            }
           }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
@@ -771,12 +808,23 @@ exports.getCategoryGroups = async (categoryId, request, access_token) => asyncPr
           log.error("Group category not found, possibly deleted referenced from self signup config. Returning empty data.");
         }
         else if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          try {
-            await oauth.providerRefreshToken(request);
+          /* Another request may have stored a new token just before this one, and the      */
+          /* session can still be serving the token it held before that. Only refresh when  */
+          /* the database holds the same token that Canvas just rejected.                   */
+          const rejectedToken = request.session?.token?.access_token;
+          const currentToken = await exports.tokenFromDatabase(request);
+
+          if (currentToken && currentToken.access_token != rejectedToken) {
+            log.info("[API] The token had already been replaced, continuing with the one in database.");
           }
-          catch (refreshError) {
-            log.error("[API] The token could not be refreshed: " + refreshError);
-            return reject(exports.reauthorizationNeededError());
+          else {
+            try {
+              await oauth.providerRefreshToken(request);
+            }
+            catch (refreshError) {
+              log.error("[API] The token could not be refreshed: " + refreshError);
+              return reject(exports.reauthorizationNeededError());
+            }
           }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
@@ -868,12 +916,23 @@ exports.getGroupUsers = async (groupId, request) => asyncPromise(async function(
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          try {
-            await oauth.providerRefreshToken(request);
+          /* Another request may have stored a new token just before this one, and the      */
+          /* session can still be serving the token it held before that. Only refresh when  */
+          /* the database holds the same token that Canvas just rejected.                   */
+          const rejectedToken = request.session?.token?.access_token;
+          const currentToken = await exports.tokenFromDatabase(request);
+
+          if (currentToken && currentToken.access_token != rejectedToken) {
+            log.info("[API] The token had already been replaced, continuing with the one in database.");
           }
-          catch (refreshError) {
-            log.error("[API] The token could not be refreshed: " + refreshError);
-            return reject(exports.reauthorizationNeededError());
+          else {
+            try {
+              await oauth.providerRefreshToken(request);
+            }
+            catch (refreshError) {
+              log.error("[API] The token could not be refreshed: " + refreshError);
+              return reject(exports.reauthorizationNeededError());
+            }
           }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
@@ -967,12 +1026,23 @@ exports.getGroupMembers = async (groupId, request) => asyncPromise(async functio
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          try {
-            await oauth.providerRefreshToken(request);
+          /* Another request may have stored a new token just before this one, and the      */
+          /* session can still be serving the token it held before that. Only refresh when  */
+          /* the database holds the same token that Canvas just rejected.                   */
+          const rejectedToken = request.session?.token?.access_token;
+          const currentToken = await exports.tokenFromDatabase(request);
+
+          if (currentToken && currentToken.access_token != rejectedToken) {
+            log.info("[API] The token had already been replaced, continuing with the one in database.");
           }
-          catch (refreshError) {
-            log.error("[API] The token could not be refreshed: " + refreshError);
-            return reject(exports.reauthorizationNeededError());
+          else {
+            try {
+              await oauth.providerRefreshToken(request);
+            }
+            catch (refreshError) {
+              log.error("[API] The token could not be refreshed: " + refreshError);
+              return reject(exports.reauthorizationNeededError());
+            }
           }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
@@ -1075,12 +1145,23 @@ exports.getCourseAssignments = async (courseId, request) => asyncPromise(async f
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          try {
-            await oauth.providerRefreshToken(request);
+          /* Another request may have stored a new token just before this one, and the      */
+          /* session can still be serving the token it held before that. Only refresh when  */
+          /* the database holds the same token that Canvas just rejected.                   */
+          const rejectedToken = request.session?.token?.access_token;
+          const currentToken = await exports.tokenFromDatabase(request);
+
+          if (currentToken && currentToken.access_token != rejectedToken) {
+            log.info("[API] The token had already been replaced, continuing with the one in database.");
           }
-          catch (refreshError) {
-            log.error("[API] The token could not be refreshed: " + refreshError);
-            return reject(exports.reauthorizationNeededError());
+          else {
+            try {
+              await oauth.providerRefreshToken(request);
+            }
+            catch (refreshError) {
+              log.error("[API] The token could not be refreshed: " + refreshError);
+              return reject(exports.reauthorizationNeededError());
+            }
           }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
@@ -1202,12 +1283,23 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, acc
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          try {
-            await oauth.providerRefreshToken(request);
+          /* Another request may have stored a new token just before this one, and the      */
+          /* session can still be serving the token it held before that. Only refresh when  */
+          /* the database holds the same token that Canvas just rejected.                   */
+          const rejectedToken = request.session?.token?.access_token;
+          const currentToken = await exports.tokenFromDatabase(request);
+
+          if (currentToken && currentToken.access_token != rejectedToken) {
+            log.info("[API] The token had already been replaced, continuing with the one in database.");
           }
-          catch (refreshError) {
-            log.error("[API] The token could not be refreshed: " + refreshError);
-            return reject(exports.reauthorizationNeededError());
+          else {
+            try {
+              await oauth.providerRefreshToken(request);
+            }
+            catch (refreshError) {
+              log.error("[API] The token could not be refreshed: " + refreshError);
+              return reject(exports.reauthorizationNeededError());
+            }
           }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
@@ -1303,12 +1395,23 @@ exports.getUser = async (userId, request) => asyncPromise(async function(resolve
         log.error("[API] Error: " + error);
 
         if (error.response?.status == 401 && error.response?.headers?.['www-authenticate']) { // refresh token, then try again
-          try {
-            await oauth.providerRefreshToken(request);
+          /* Another request may have stored a new token just before this one, and the      */
+          /* session can still be serving the token it held before that. Only refresh when  */
+          /* the database holds the same token that Canvas just rejected.                   */
+          const rejectedToken = request.session?.token?.access_token;
+          const currentToken = await exports.tokenFromDatabase(request);
+
+          if (currentToken && currentToken.access_token != rejectedToken) {
+            log.info("[API] The token had already been replaced, continuing with the one in database.");
           }
-          catch (refreshError) {
-            log.error("[API] The token could not be refreshed: " + refreshError);
-            return reject(exports.reauthorizationNeededError());
+          else {
+            try {
+              await oauth.providerRefreshToken(request);
+            }
+            catch (refreshError) {
+              log.error("[API] The token could not be refreshed: " + refreshError);
+              return reject(exports.reauthorizationNeededError());
+            }
           }
         }
         else if (error.response?.status == 401 && !error.response?.headers?.['www-authenticate']) { // no access, redirect to auth
