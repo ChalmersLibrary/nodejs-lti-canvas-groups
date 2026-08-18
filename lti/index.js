@@ -31,6 +31,20 @@ if (process.env.NODE_ENV === 'development') {
     }
 }
 
+/**
+ * Session as text for debug logging, without the token data. Access tokens and refresh
+ * tokens must never be written to the log; the refresh token is long lived and gives
+ * full API access as the user to anyone who can read the log stream.
+ */
+const sessionForLog = (session) => {
+    const { token, ...rest } = session;
+
+    return JSON.stringify({
+        ...rest,
+        token: token ? { token_type: token.token_type, expires_at_utc: token.expires_at_utc } : undefined
+    });
+};
+
 const getSecret = (consumerKey, callback) => {
     if (consumerKeys && secrets.length == 0) {
         for (const key of consumerKeys.split(',')) {
@@ -141,7 +155,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
                     log.info("[Session] User session exists: " + req.session.id + ", expires: " + expiry);
                     
                     if (debugLogging)
-                        log.info(JSON.stringify(req.session));
+                        log.info(sessionForLog(req.session));
                     
                     if (expiry > now) {
                         log.info("[Session] OAuth Token for API is OK.");
@@ -213,7 +227,7 @@ exports.handleLaunch = (page) => function(req, res, next) {
                     log.info("[LTI] Session id: " + req.session.id);
 
                     if (debugLogging) {
-                        log.info(JSON.stringify(req.session));
+                        log.info(sessionForLog(req.session));
                     }
 
                     db.getClientData(provider.userId, canvas.providerEnvironment(req))
