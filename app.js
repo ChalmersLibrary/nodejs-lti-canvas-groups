@@ -41,6 +41,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+/* Static assets are served before the session middleware. Every request that passes  */
+/* through it reads the session file and writes it back (session-file-store does that */
+/* in touch()), and the assets on a page are requested in parallel with each other and */
+/* with the page itself, which makes those read-modify-writes overlap.                 */
+app.use("/assets", express.static(__dirname + '/public/assets'));
+
 const sessionOptions = {
     store: new FileStore(fileStoreOptions),
     name: process.env.SESSION_NAME ? process.env.SESSION_NAME : "groupTool.sid",
@@ -57,8 +63,6 @@ if (process.env.NODE_ENV === "production") {
 }
 
 app.use(session(sessionOptions));
-
-app.use("/assets", express.static(__dirname + '/public/assets'));
 
 // Content Security Policy Header
 app.use(function (req, res, next) {
@@ -221,7 +225,7 @@ app.get('/oauth', (request, response, next) => {
 app.get('/oauth/redirect', async(request, response) => {
     try {
         request.session.token = await oauth.providerRequestToken(request);
-        log.info("[Main] Written data to session: " + JSON.stringify(request.session.token));
+        log.info("[Main] Written token data to session, expires: " + request.session.token.expires_at_utc);
         log.info("[Main] Redirecting to /loading/groups");
         response.redirect('/loading/groups');
     } catch (error) {

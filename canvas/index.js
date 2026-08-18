@@ -180,11 +180,38 @@ const asyncPromise = (executor) => new Promise(function(resolve, reject) {
 });
 
 /**
- * Returns the OAuth token from the session, or false if the session has no usable token.
- * A session can be missing its token data, and API calls must then fail in a controlled way.
+ * Returns the OAuth token to use for API calls, or false if there is none.
+ *
+ * The session is not a reliable place to keep the token; the session file is written by
+ * several requests at once and a write can land after another one has already added the
+ * token, leaving a session with user data but no token. The database is written at the
+ * same time as the session in the OAuth flow, so it is used to restore the token when
+ * the session has lost it. An expired token is handled where it is used, by the normal
+ * 401 handling that refreshes it.
  */
-exports.sessionToken = (request) => {
-  return request?.session?.token?.access_token ? request.session.token : false;
+exports.sessionToken = async (request) => {
+  if (request?.session?.token?.access_token) {
+    return request.session.token;
+  }
+
+  if (!request?.session?.userId) {
+    return false;
+  }
+
+  try {
+    const tokenData = await db.getClientData(request.session.userId, exports.providerEnvironment(request));
+
+    request.session.token = tokenData;
+
+    log.info("[Session] Session had no token data, restored it from database for user_id '" + request.session.userId + "'.");
+
+    return tokenData;
+  }
+  catch (error) {
+    log.info("[Session] Session has no token data and there is none in the database for user_id '" + request.session.userId + "': " + error);
+
+    return false;
+  }
 };
 
 /**
@@ -470,7 +497,7 @@ exports.getCourseGroups = async (courseId, request) => asyncPromise(async functi
     var returnedApiData = [];
     var errorCount = 0;
 
-    if (!exports.sessionToken(request)) {
+    if (!await exports.sessionToken(request)) {
       return reject(exports.noSessionTokenError());
     }
 
@@ -560,7 +587,7 @@ module.exports.getGroupCategories = async (courseId, request) => asyncPromise(as
     var returnedApiData = new Array();
     var errorCount = 0;
 
-    if (!exports.sessionToken(request)) {
+    if (!await exports.sessionToken(request)) {
       return reject(exports.noSessionTokenError());
     }
 
@@ -653,6 +680,10 @@ exports.getCategoryGroups = async (categoryId, request, access_token) => asyncPr
     var apiData = [];
     var returnedApiData = [];
     var errorCount = 0;
+
+    if (!access_token && !await exports.sessionToken(request)) {
+      return reject(exports.noSessionTokenError());
+    }
 
     while (errorCount < 4 && thisApiPath && (request.session?.token?.access_token || access_token)) {
       log.info("[API] GET " + thisApiPath);
@@ -749,7 +780,7 @@ exports.getGroupUsers = async (groupId, request) => asyncPromise(async function(
     var returnedApiData = [];
     var errorCount = 0;
 
-    if (!exports.sessionToken(request)) {
+    if (!await exports.sessionToken(request)) {
       return reject(exports.noSessionTokenError());
     }
 
@@ -840,7 +871,7 @@ exports.getGroupMembers = async (groupId, request) => asyncPromise(async functio
     var returnedApiData = [];
     var errorCount = 0;
 
-    if (!exports.sessionToken(request)) {
+    if (!await exports.sessionToken(request)) {
       return reject(exports.noSessionTokenError());
     }
 
@@ -940,7 +971,7 @@ exports.getCourseAssignments = async (courseId, request) => asyncPromise(async f
     var returnedApiData = [];
     var errorCount = 0;
 
-    if (!exports.sessionToken(request)) {
+    if (!await exports.sessionToken(request)) {
       return reject(exports.noSessionTokenError());
     }
 
@@ -1060,6 +1091,10 @@ exports.getAssignmentGrade = async (courseId, assignmentId, userId, request, acc
     var cachedApiData = [];
     var returnedApiData = {};
     var errorCount = 0;
+
+    if (!access_token && !await exports.sessionToken(request)) {
+      return reject(exports.noSessionTokenError());
+    }
 
     while (errorCount < 4 && thisApiPath && (request.session?.token?.access_token || access_token)) {
       log.info("[API] GET " + thisApiPath);

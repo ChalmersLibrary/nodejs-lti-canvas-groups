@@ -62,8 +62,6 @@ exports.providerRequestToken = async(request) => new Promise(function(resolve, r
                         }
                     })
                     .then(async(response) => {
-                        log.info("[OAuth] Response: " + JSON.stringify(response.data));
-
                         const tokenData = {
                             access_token: response.data.access_token,
                             token_type: response.data.token_type,
@@ -72,7 +70,7 @@ exports.providerRequestToken = async(request) => new Promise(function(resolve, r
                             expires_at_utc: new Date(Date.now() + (response.data.expires_in * 1000))
                         };
 
-                        log.info("[OAuth] Got token data: " + JSON.stringify(tokenData));
+                        log.info("[OAuth] Got token data for user_id " + request.session.userId + ", expires: " + tokenData.expires_at_utc);
 
                         db.setClientData(
                                 request.session.userId,
@@ -107,63 +105,70 @@ exports.providerRequestToken = async(request) => new Promise(function(resolve, r
  * Refreshes a token from OAuth server.
  */
 exports.providerRefreshToken = async(request) => new Promise(function(resolve, reject) {
-    if (request.session.userId && request.session.canvasCourseId) {
-        log.info("[OAuth] Refresh token data: client_id: " + clientId + "client_secret: " + clientSecret + "refresh_token: " + request.session.token.refresh_token);
-        log.info("[OAuth] Api path: " + canvas.providerBaseUri(request) + "/login/oauth2/token");
-
-        axios({
-                method: "post",
-                url: canvas.providerBaseUri(request) + "/login/oauth2/token",
-                data: {
-                    grant_type: "refresh_token",
-                    client_id: clientId,
-                    client_secret: clientSecret,
-                    refresh_token: request.session.token.refresh_token
-                }
-            })
-            .then((response) => {
-                request.session.token.access_token = response.data.access_token;
-                request.session.token.expires_in = response.data.expires_in;
-                request.session.token.expires_at_utc = new Date(Date.now() + (response.data.expires_in * 1000));
-
-                db.setClientData(
-                        request.session.userId,
-                        canvas.providerEnvironment(request),
-                        request.session.token.access_token,
-                        request.session.token.refresh_token,
-                        request.session.token.expires_at_utc
-                    )
-                    .then(() => {
-                        log.info("[OAuth] Refreshed token: " + JSON.stringify(request.session.token) + ", expires: " + request.session.token.expires_at_utc);
-                        resolve();
-                    })
-                    .catch((error) => {
-                        log.error("[OAuth] Error during token database store: " + error);
-                        reject(error);
-                    })
-            })
-            .catch(async(error) => {
-                log.error("[OAuth] Refreshing existing token: " + error);
-                reject(error);
-            });
+    if (!request.session?.token?.refresh_token) {
+        return reject(new Error("No refresh token in session, reauthorization is needed."));
     }
+    if (!request.session.userId || !request.session.canvasCourseId) {
+        return reject(new Error("Session is not valid; third-party cookies must be allowed."));
+    }
+
+    log.info("[OAuth] Refresh token for client_id: " + clientId);
+    log.info("[OAuth] Api path: " + canvas.providerBaseUri(request) + "/login/oauth2/token");
+
+    axios({
+            method: "post",
+            url: canvas.providerBaseUri(request) + "/login/oauth2/token",
+            data: {
+                grant_type: "refresh_token",
+                client_id: clientId,
+                client_secret: clientSecret,
+                refresh_token: request.session.token.refresh_token
+            }
+        })
+        .then((response) => {
+            request.session.token.access_token = response.data.access_token;
+            request.session.token.expires_in = response.data.expires_in;
+            request.session.token.expires_at_utc = new Date(Date.now() + (response.data.expires_in * 1000));
+
+            db.setClientData(
+                    request.session.userId,
+                    canvas.providerEnvironment(request),
+                    request.session.token.access_token,
+                    request.session.token.refresh_token,
+                    request.session.token.expires_at_utc
+                )
+                .then(() => {
+                    log.info("[OAuth] Refreshed token for user_id " + request.session.userId + ", expires: " + request.session.token.expires_at_utc);
+                    resolve();
+                })
+                .catch((error) => {
+                    log.error("[OAuth] Error during token database store: " + error);
+                    reject(error);
+                })
+        })
+        .catch(async(error) => {
+            log.error("[OAuth] Refreshing existing token: " + error);
+            reject(error);
+        });
 });
 
 exports.providerDeleteToken = async(request) => new Promise(function(resolve, reject) {
-    if (request.session.userId) {
-        log.info("[Token delete] Deleting approved access token in Canvas for user_id " + request.session.userId);
-
-        axios({
-                method: "delete",
-                url: canvas.providerBaseUri(request) + "/login/oauth2/token"
-            })
-            .then((response) => {
-                log.info("API Response: " + JSON.stringify(response));
-                resolve(response);
-            })
-            .catch(async(error) => {
-                log.error("Deleting approved access token: " + JSON.stringify(error));
-                reject(error)
-            });
+    if (!request.session?.userId) {
+        return reject(new Error("Session is not valid; no user to delete the token for."));
     }
+
+    log.info("[Token delete] Deleting approved access token in Canvas for user_id " + request.session.userId);
+
+    axios({
+            method: "delete",
+            url: canvas.providerBaseUri(request) + "/login/oauth2/token"
+        })
+        .then((response) => {
+            log.info("API Response: " + JSON.stringify(response));
+            resolve(response);
+        })
+        .catch(async(error) => {
+            log.error("Deleting approved access token: " + JSON.stringify(error));
+            reject(error)
+        });
 });
