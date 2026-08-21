@@ -25,9 +25,15 @@ const tokenFingerprint = (token) => {
 };
 
 /* The path can be pointed somewhere else with DB_PATH, so that a test run does not write */
-/* into the database that is being developed against.                                     */
-const dbPath = path.resolve(process.env.DB_PATH ?? './db/tokens.sqlite3');
+/* into the database that is being developed against. An empty DB_PATH counts as unset:   */
+/* it is what a copied .env leaves behind, and ?? would keep the empty string, which       */
+/* path.resolve turns into the working directory and sqlite cannot open.                   */
+const dbPath = path.resolve(process.env.DB_PATH || './db/tokens.sqlite3');
 const dbTemplatePath = path.resolve(__dirname, 'tokens_template.sqlite3');
+
+if (fs.existsSync(dbPath) && fs.statSync(dbPath).isDirectory()) {
+    throw new Error(`[DB] DB_PATH points at a directory, not a database file: ${dbPath}`);
+}
 
 /* Magic for Azure; if there is no existing db file, copy one from the template that has  */
 /* journal_mode=WAL set, to work around the cifs mount issue.                             */
