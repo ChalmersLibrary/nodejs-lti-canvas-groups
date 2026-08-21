@@ -324,4 +324,36 @@ test('LTI launch, OAuth, groups view and exports', async (t) => {
   await check('concurrent loads deduplicated', categoryCalls === 1, `${categoryCalls} group_categories request(s), ${apiCalls.length} api calls`);
   await check('three concurrent loads cost one load', apiCalls.length === 7, `${apiCalls.length} api calls, expected 7`);
 
+  /* 14. The deploy day path: sessions are gone but the tokens are still in the database.
+     Changing the session store throws away every active session, so every user comes back
+     through a launch with no session and a token that is only in the database. They must
+     not be sent through OAuth again. */
+  await dbInit.sql.run('DELETE FROM sessions');
+
+  const storedToken = await dbInit.sql.get("SELECT api_token FROM tokens WHERE user_id = 'lti-user-1'");
+  await check('token still in the database after the sessions are dropped', storedToken?.api_token != null, JSON.stringify(storedToken));
+
+  const freshJar = new Jar();
+  const relaunchBody = {
+    ...launchBody,
+    oauth_nonce: crypto.randomBytes(12).toString('hex'),
+    oauth_timestamp: String(Math.floor(Date.now() / 1000))
+  };
+  relaunchBody.oauth_signature = signLaunch(launchUrl, relaunchBody, CONSUMER_SECRET);
+
+  const relaunch = await fetch(appBase + '/launch_lti', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { cookie: freshJar.header(), 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(relaunchBody).toString()
+  });
+  freshJar.store(relaunch);
+
+  await check('launch with no session restores the token from the database',
+    relaunch.headers.get('location') === '/loading/groups',
+    `${relaunch.status} -> ${relaunch.headers.get('location')}`);
+
+  const relaunchGroups = await fetch(appBase + '/groups', { headers: { cookie: freshJar.header() }, redirect: 'manual' });
+  await check('and the groups page works straight away', relaunchGroups.status === 200, String(relaunchGroups.status));
+
 });
