@@ -107,6 +107,29 @@ If you for some reason want to clear all sessions and authorized users, delete t
 tokens and the sessions, and the tables are created again from the template on startup.
 
 
+## Reading the database on Azure
+
+The database is on the App Service filesystem, and it runs in WAL mode, so a copy of
+`tokens.sqlite3` on its own is not the current state: recent writes live in `tokens.sqlite3-wal`
+until sqlite checkpoints them. Copy all three files, or better, take a snapshot.
+
+`VACUUM INTO` writes one self-contained file with everything committed, so there is a single
+file to fetch and it is consistent even if the application writes while it runs. Node and the
+sqlite3 module are already on the App Service, so from the Kudu console
+(`https://<app>.scm.azurewebsites.net/DebugConsole`) in `site\wwwroot`:
+
+```
+node -e "const s=require('sqlite3');new s.Database('db/tokens.sqlite3').run(\"VACUUM INTO 'snapshot.sqlite3'\",e=>{console.log(e||'ok');process.exit(0)})"
+```
+
+Then download `snapshot.sqlite3` from the same console and open it locally. Delete it from the
+server afterwards; it holds every user's refresh token.
+
+The administration pages deliberately do not show token values, only a `sha256:` fingerprint
+and the length, which is enough to see whether a token has changed. A refresh token is long
+lived and gives full API access as the user, so it does not belong on a page or in a log.
+
+
 ## Database upgrades
 
 An existing database file is used as it is; only missing tables are added, so the `sessions` table appears on the first startup after the

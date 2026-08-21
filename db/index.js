@@ -1,9 +1,28 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const sqlite3 = require('sqlite3');
 const log = require('../log');
+
+/**
+ * A short, stable fingerprint of a token, for the pages that report on stored tokens.
+ *
+ * An access token is a credential and a refresh token is a long lived one that gives full
+ * API access as the user, so neither belongs on a page or in a log. What those pages are
+ * for is telling whether a token has changed since last time, and a hash answers that just
+ * as well as the value does, without being usable if the page is left open or copied.
+ */
+const tokenFingerprint = (token) => {
+    if (!token) {
+        return null;
+    }
+
+    const value = String(token);
+
+    return `sha256:${crypto.createHash('sha256').update(value).digest('hex').slice(0, 12)} (${value.length} chars)`;
+};
 
 /* The path can be pointed somewhere else with DB_PATH, so that a test run does not write */
 /* into the database that is being developed against.                                     */
@@ -132,11 +151,13 @@ async function getAllClientsData() {
 
     const rows = await all('SELECT DISTINCT user_id, user_env, api_token, refresh_token, expires_at_utc, updated_at FROM tokens ORDER BY updated_at DESC');
 
+    /* Fingerprints, not values: this feeds the administration pages. The names say so, so */
+    /* that nobody reads the page and takes them for the tokens themselves.                */
     return rows.map((row) => ({
         user_id: row.user_id,
         user_env: row.user_env,
-        api_token: row.api_token,
-        refresh_token: row.refresh_token,
+        api_token_fingerprint: tokenFingerprint(row.api_token),
+        refresh_token_fingerprint: tokenFingerprint(row.refresh_token),
         expires_at: new Date(row.expires_at_utc).toISOString(),
         updated_at: new Date(row.updated_at).toISOString()
     }));
@@ -252,6 +273,7 @@ const close = () => new Promise((resolve, reject) => {
 module.exports = {
     ready,
     close,
+    tokenFingerprint,
     /* The session store builds its own queries against the same connection. */
     sql: { run, all, get },
     getAllClientsDataMocked,

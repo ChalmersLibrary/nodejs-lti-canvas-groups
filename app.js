@@ -188,12 +188,19 @@ app.get('/test/sqlite3', requireSession, requireAdmin, async (request, response)
         await db.setClientData(user.user_id, user.user_env, user.api_token, user.refresh_token, user.expires_at);
     }
 
+    const single = await db.getClientData('abcdef_123456', 'test');
+
     return response.send({
         success: true,
         users: {
             mocked: mockedUsers,
             db: await db.getAllClientsData(),
-            single: await db.getClientData('abcdef_123456', 'test')
+            /* getClientData returns the real token, since that is what it is for elsewhere. */
+            single: single && {
+                ...single,
+                access_token: db.tokenFingerprint(single.access_token),
+                refresh_token: db.tokenFingerprint(single.refresh_token)
+            }
         }
     });
 });

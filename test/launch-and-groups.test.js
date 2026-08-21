@@ -296,7 +296,23 @@ test('LTI launch, OAuth, groups view and exports', async (t) => {
 
   /* 10. Admin pages */
   const stats = await req('GET', '/stats');
+  const statsHtml = await stats.text();
   await check('/stats for admin', stats.status === 200, String(stats.status));
+
+  /* The refresh token is long lived and gives full API access as the user, so no admin
+     page may print it. currentAccessToken is whatever the mocked Canvas last handed out. */
+  await check('/stats does not leak the access token', !statsHtml.includes(currentAccessToken), currentAccessToken);
+  await check('/stats does not leak the refresh token', !statsHtml.includes('refresh-token-1'));
+  await check('/stats shows token fingerprints instead', statsHtml.includes('sha256:') && statsHtml.includes('refresh_token_fingerprint'));
+
+  const sqliteTest = await req('GET', '/test/sqlite3');
+  const sqliteJson = await sqliteTest.json();
+  await check('/test/sqlite3 fingerprints the token it read back',
+    String(sqliteJson.users.single?.access_token ?? '').startsWith('sha256:'),
+    JSON.stringify(sqliteJson.users.single));
+  await check('/test/sqlite3 client list carries no raw token fields',
+    sqliteJson.users.db.every((u) => !('api_token' in u) && !('refresh_token' in u)),
+    JSON.stringify(sqliteJson.users.db[0]));
   const jsonStats = await req('GET', '/json/stats');
   const jsonStatsBody = await jsonStats.json();
   await check('/json/stats reports caches', jsonStats.status === 200 && jsonStatsBody.cache_stats.length > 0, JSON.stringify(jsonStatsBody).slice(0, 160));
