@@ -11,7 +11,9 @@ application written in Node.js by Kyle Martin.
 
 ## Requirements
 
-Node.js 24 or later (see `.nvmrc`). The version is enforced by `engines` in `package.json`.
+Node.js 22 or later, which is what `engines` in `package.json` asks for. Development and production run 24, which is what `.nvmrc` says;
+the whole test suite passes on 22 and 24 alike, so 22 stays available as a way back if a runtime upgrade goes wrong. The real floor is set by
+the sqlite3 module at 20.17, but 22 is the oldest version this is actually tried on.
 
 
 ## Installation
@@ -106,7 +108,7 @@ available on the App Service URI shortly.
 local development and fill it in; in Azure the same names go in as App Service application settings. The example file is the authoritative
 list, so that there is only one place to keep up to date.
 
-**Node version in Azure.** `WEBSITE_NODE_DEFAULT_VERSION` has to be set to a Node 24 runtime (`~24`). An older note here said 12.13.0
+**Node version in Azure.** `WEBSITE_NODE_DEFAULT_VERSION` is set to `~24`, and `~22` also works if you need to go back. An older note here said 12.13.0
 because of trouble building the sqlite3 native module; that is no longer an issue, sqlite3 6 ships prebuilt binaries. Check that the runtime
 is actually available on the App Service plan before deploying, since the Windows flavour of App Service lags behind on Node versions.
 
