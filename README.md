@@ -5,8 +5,31 @@ LTI Application for working with Canvas groups, groupsets and users using Node.j
 
 ## Overview
 
-This project is forked from https://github.com/js-kyle/nodejs-lti-provider which is the template for a minimal LTI provider
-application written in Node.js by Kyle Martin.
+Group Tool is a Canvas LTI application that gives a teacher one view of every group set in a course, with the members of each group, and
+exports of the same. It is launched from the course navigation in Canvas, so there is no separate login: the LTI launch says who the user is
+and which course they are in, and the tool then talks to the Canvas API as that user.
+
+What it does:
+
+* **Lists every group set in the course**, one table per set, with group, student name and email address.
+* **Exports a group set as CSV** for Excel: semicolon separated with a UTF-8 byte order mark, so Excel opens it directly instead of running
+  the import wizard.
+* **Exports a group set as a Zoom CSV** for pre-assigned breakout rooms, room name and email address. Note that the address mapping in this
+  export is site specific; see `csvExports.zoom` in `app.js` if your addresses do not match.
+* **Ties self signup to an assignment.** For a group set with self signup enabled, a rule can require a submission on a chosen assignment,
+  graded at or above a chosen number of points, before a student may join a group. The tool answers for one student at
+  `/api/self-signup/:course_id/:user_id`, and custom javascript in Canvas calls that to hide the Join button. The rule carries a description
+  to show the student when joining is blocked.
+* **Caches what it reads from the Canvas API**, because a course with many group sets is a great many API calls, with a button to clear a
+  course's caches when groups or assignments have just been changed.
+* **Keeps an administrator view** of authorized users, cache counts and process statistics, for the Canvas user ids listed in
+  `adminCanvasUserIds`.
+
+The cartridge places the tool in the course navigation with `visibility=admins`, so Canvas hides the link from students. The tool itself does
+not check the role, so anyone who can reach a launch can see the group lists for that course.
+
+Originally forked from [nodejs-lti-provider](https://github.com/js-kyle/nodejs-lti-provider), a template for a minimal LTI provider in
+Node.js by Kyle Martin.
 
 
 ## Requirements
@@ -136,6 +159,94 @@ You must first create a Developer Key for this application, then store the value
 `GET /json/stats` get statistics about authorized users and caches, JSON data. This data is used in the dashboard view.
 
 The view `loading` is a proxy web page for displaying a progress bar until next page loads, as courses with many groupsets and groups can take some time to load. This page uses a html head http-equiv redirect.
+
+
+### The self signup endpoint
+
+`GET /api/self-signup/:course_id/:user_id` answers whether one student has met the self signup rules configured for a course. It takes the
+numeric Canvas course id and the numeric Canvas user id, and it needs `systemApiToken` to be set, since it reads submissions with no user
+session of its own.
+
+There is **no authentication on this endpoint**. It is meant to be called from javascript running in the student's own browser, which has no
+credentials to offer.
+
+```json
+{
+  "success": true,
+  "groups": [
+    {
+      "id": 228462,
+      "name": "Group 1",
+      "passed": true,
+      "description": "Pass the introductory quiz before joining a group."
+    }
+  ]
+}
+```
+
+There is one entry per group, in every group set of the course that has a rule, so a course with two rules returns the groups of both sets.
+`passed` is the answer for the student in the url: true when their submission on the rule's assignment is graded at or above the rule's
+minimum points. It is false when there is no submission at all. `description` is the text the rule carries, to show the student when joining
+is blocked.
+
+Two shapes mean "do not block anything", and a caller has to treat them the same way:
+
+* `{"success": true, "groups": []}` when the course has no rules configured.
+* `{"success": false, "groups": []}` when something went wrong, such as a missing `systemApiToken` or a Canvas API failure.
+
+The consumer is custom javascript loaded by Canvas, which is not part of this repository since the theme it belongs to is per installation.
+It runs on the student group page, calls this endpoint for the current user, and hides the Join button of every group that comes back with
+`passed` false, putting `description` in its place. Canvas renders that page progressively, so the groups have to be caught as they appear
+rather than once on load:
+
+```js
+// On /courses/:id/groups in the student view.
+let ruleData = { groups: [] };
+
+const applyRules = (node) => {
+    const body = node.querySelector?.("div.student-group-body");
+    if (!body) return;
+
+    const groupId = parseInt(body.getAttribute("id").replace("student-group-body-", ""), 10);
+    const rule = ruleData.groups.find((g) => g.id === groupId);
+
+    // No rule for this group, or the student has met it: leave the page alone.
+    if (!rule || rule.passed) return;
+
+    node.querySelector("span.student-group-join button")?.style.setProperty("display", "none");
+
+    if (!node.querySelector("div.student-group-title div.self-signup-locked")) {
+        const text = document.createElement("div");
+        text.className = "self-signup-locked";
+        text.innerText = rule.description ?? "";
+        node.querySelector("div.student-group-title").appendChild(text);
+    }
+};
+
+new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+        if (mutation.type === "childList") mutation.addedNodes.forEach(applyRules);
+        else if (mutation.type === "attributes") applyRules(mutation.target);
+    }
+}).observe(document.getElementById("content"), { childList: true, attributes: true, subtree: true });
+
+fetch(`https://YOUR-TOOL-HOST/api/self-signup/${ENV.course_id}/${ENV.current_user.id}`)
+    .then((response) => response.json())
+    .then((data) => {
+        ruleData = data;
+        // Groups already on the page were rendered before the answer arrived.
+        document.querySelectorAll("div.student-groups div.student-group").forEach(applyRules);
+    })
+    .catch(() => { /* leave every Join button alone */ });
+```
+
+`ENV.course_id` and `ENV.current_user.id` are what Canvas puts on the page, and are the two ids the endpoint wants. The request is
+cross-origin and carries no credentials, which is why the application answers with `Access-Control-Allow-Origin: *`.
+
+Note the failure mode, which the configuration dialogue also warns about: if the request fails or arrives late, the javascript has nothing to
+go on and the Join button stays visible, so a student may join a group they should not have. The rule is a nudge and not an enforcement.
+Falling open is the deliberate choice here; the alternative is hiding buttons the student was entitled to use whenever the tool is briefly
+unreachable.
 
 
 ## Storage and session cookies
