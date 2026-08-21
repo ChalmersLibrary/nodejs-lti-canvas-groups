@@ -129,6 +129,13 @@ The administration pages deliberately do not show token values, only a `sha256:`
 and the length, which is enough to see whether a token has changed. A refresh token is long
 lived and gives full API access as the user, so it does not belong on a page or in a log.
 
+Note that the administration pages, like the rest of the tool, need the session that the LTI
+launch creates, and that session lives in the Canvas iframe. The session cookie is
+`SameSite=None; Secure; Partitioned`, so browsers keep it in a jar belonging to the Canvas page
+it was created under. Opening `/stats` or `/json/stats` directly in a browser tab is a different
+context with no cookie, and the application answers that with the "third-party cookies" error
+because from its point of view there is no session. Reach them from inside Canvas instead.
+
 
 ## Database upgrades
 

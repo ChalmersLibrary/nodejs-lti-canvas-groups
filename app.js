@@ -57,6 +57,16 @@ const sessionOptions = {
 if (process.env.NODE_ENV === "production") {
     app.set('trust proxy', 1);
     sessionOptions.cookie.secure = true;
+
+    /* The tool only ever runs in an iframe inside Canvas, so its cookie is a third party
+       cookie. Browsers are restricting those unless they are partitioned to the embedding
+       site, which is what Partitioned asks for (CHIPS). Without it the launch stops working
+       as the restrictions tighten. A partitioned cookie must also be Secure, which is why
+       this sits here rather than with the options above.
+
+       Note that this deliberately ties the session to the Canvas page it was created under:
+       opening a tool url directly in a tab is a different partition and has no session. */
+    sessionOptions.cookie.partitioned = true;
 }
 
 app.use(session(sessionOptions));

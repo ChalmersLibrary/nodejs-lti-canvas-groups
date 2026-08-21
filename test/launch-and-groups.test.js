@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const crypto = require('node:crypto');
 const path = require('node:path');
+const { signLaunch, launchBody: buildLaunchBody, Jar } = require('./helpers/lti');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -98,32 +99,6 @@ const canvasServer = http.createServer((req, res) => {
   return send(404, { errors: [{ message: 'no mock for ' + url.pathname }] });
 });
 
-/* ---------- signed LTI launch ---------- */
-const specialEncode = (s) => encodeURIComponent(String(s)).replace(/[!'()]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase()).replace(/\*/g, '%2A');
-
-const signLaunch = (launchUrl, body, secret) => {
-  const params = Object.entries(body)
-    .filter(([k]) => k !== 'oauth_signature')
-    .map(([k, v]) => `${k}=${specialEncode(v)}`)
-    .sort()
-    .join('&');
-  const base = ['POST', specialEncode(launchUrl), specialEncode(params)].join('&');
-  return crypto.createHmac('sha1', secret + '&').update(base).digest('base64');
-};
-
-/* ---------- tiny cookie jar ---------- */
-class Jar {
-  #cookies = new Map();
-  header() { return [...this.#cookies].map(([k, v]) => `${k}=${v}`).join('; '); }
-  store(res) {
-    for (const raw of res.headers.getSetCookie?.() ?? []) {
-      const [pair] = raw.split(';');
-      const i = pair.indexOf('=');
-      this.#cookies.set(pair.slice(0, i), pair.slice(i + 1));
-    }
-  }
-}
-
 let canvasPort;
 let appPort;
 
@@ -197,28 +172,7 @@ test('LTI launch, OAuth, groups view and exports', async (t) => {
 
   /* 1. Launch */
   const launchUrl = `http://127.0.0.1:${appPort}/launch_lti`;
-  const launchBody = {
-    lti_message_type: 'basic-lti-launch-request',
-    lti_version: 'LTI-1p0',
-    resource_link_id: 'rl-1',
-    context_id: 'ctx-1',
-    context_title: 'Testkurs 2026',
-    user_id: 'lti-user-1',
-    roles: 'Instructor',
-    lis_person_name_full: 'Test Teacher',
-    lis_person_contact_email_primary: 'teacher@chalmers.se',
-    tool_consumer_instance_guid: 'chalmers',
-    custom_canvas_user_id: '777',
-    custom_canvas_course_id: '123',
-    custom_canvas_enrollment_state: 'active',
-    custom_canvas_api_domain: '127.0.0.1',
-    launch_presentation_locale: 'sv',
-    oauth_consumer_key: CONSUMER_KEY,
-    oauth_nonce: crypto.randomBytes(12).toString('hex'),
-    oauth_signature_method: 'HMAC-SHA1',
-    oauth_timestamp: String(Math.floor(Date.now() / 1000)),
-    oauth_version: '1.0'
-  };
+  const launchBody = buildLaunchBody({ oauth_consumer_key: CONSUMER_KEY });
   launchBody.oauth_signature = signLaunch(launchUrl, launchBody, CONSUMER_SECRET);
 
   const launchRes = await req('POST', '/launch_lti', {

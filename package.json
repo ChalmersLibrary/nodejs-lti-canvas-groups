@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
-    "test": "node --test"
+    "test": "node --test \"test/*.test.js\""
   },
   "author": "Rolf Johansson",
   "license": "MIT",
