@@ -148,6 +148,30 @@ const ensureUniqueKey = async (table, keyColumns) => {
  * request that arrives before the tables exist waits for them instead of failing.
  */
 const ready = (async () => {
+    /* WAL is what makes sqlite workable on the Azure network share; without it concurrent
+       requests produce "database is locked". It used to be inherited from the template, but
+       that only covers a database this application created itself. DB_PATH can point at a
+       file from anywhere, and in particular VACUUM INTO writes its output in the default
+       rollback mode, so the snapshot taken to move a database to /home/Data arrives as
+       journal_mode=delete and silently loses the workaround.
+
+       Setting it here does not depend on where the file came from. It is persistent in the
+       file header, so this is a no-op on every startup after the first. */
+    try {
+        const journal = await get('PRAGMA journal_mode=WAL');
+
+        if (journal?.journal_mode === 'wal') {
+            log.info('[DB] Journal mode is WAL.');
+        }
+        else {
+            log.error(`[DB] The database is in '${journal?.journal_mode}' journal mode, not WAL. On a network ` +
+                'share that shows up as "database is locked" once more than one request writes at a time.');
+        }
+    }
+    catch (error) {
+        log.error('[DB] Could not read or set the journal mode: ' + error);
+    }
+
     await run('CREATE TABLE IF NOT EXISTS tokens (user_id TEXT NOT NULL, user_env TEXT NOT NULL, api_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at_utc DATETIME NOT NULL, updated_at DATETIME NOT NULL DEFAULT current_timestamp, PRIMARY KEY (user_id, user_env))');
     log.info("[DB] Database main table 'tokens' ready.");
 

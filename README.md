@@ -222,7 +222,9 @@ Do it in this order, because the application creates an empty database from
 looking factory fresh with the real data still at the old path:
 
 1. Snapshot the current database with `VACUUM INTO`, not `cp`, since a plain copy misses
-   whatever is still in the `-wal` file. See the section above.
+   whatever is still in the `-wal` file. See the section above. The snapshot is a single file:
+   `-wal` and `-shm` are runtime files rather than part of the database, and `VACUUM INTO`
+   writes everything into the one output file. They reappear when the application opens it.
 2. Put the snapshot at the new path and check it is readable.
 3. Set `DB_PATH` to the full path of the file and restart.
 
@@ -238,6 +240,19 @@ somewhere case-sensitive.
 
 The directory has to exist; the application will not create one, and says which directory is
 missing rather than failing with an ENOENT from the template copy.
+
+
+## Journal mode
+
+The database runs in WAL mode, which is what makes sqlite workable on the Azure network share;
+without it concurrent requests produce "database is locked". It used to be inherited from
+`db/tokens_template.sqlite3`, which only covers a database the application created itself.
+
+`VACUUM INTO` writes its output in the default rollback journal mode, so a snapshot taken to
+move the database arrives as `journal_mode=delete` and would quietly lose the workaround. The
+application therefore sets WAL on startup rather than relying on where the file came from. The
+setting lives in the file header, so it is a no-op on every start after the first, and the log
+says `[DB] Journal mode is WAL.` when it is in place.
 
 
 ## Database upgrades
