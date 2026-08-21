@@ -226,10 +226,18 @@ looking factory fresh with the real data still at the old path:
 2. Put the snapshot at the new path and check it is readable.
 3. Set `DB_PATH` to the full path of the file and restart.
 
-Use the path exactly as `ls` shows it. `/home` is a mounted share that preserves case, and
-whether `/home/Data` and `/home/data` are the same directory depends on the mount, not on this
-application, which uses the path verbatim. The directory has to exist; the application will not
-create it, and says which directory is missing rather than failing with an ENOENT.
+Use a subdirectory of your own rather than the share root, so that the file is not mixed in
+with what Azure puts there: `DB_PATH=/home/Data/grouptool/tokens.sqlite3`.
+
+Mind the capitalisation. `ls -F /home` shows `Data/`, and that mount turns out to be
+case-insensitive but case-preserving, so `/home/data` and `/home/Data` do reach the same
+directory (checked on the development App Service, 2026-08-21). Write it the way `ls` shows it
+anyway: that behaviour belongs to the mount and not to this application, which uses the path
+verbatim, so the canonical spelling is the one that keeps working if the path is ever read
+somewhere case-sensitive.
+
+The directory has to exist; the application will not create one, and says which directory is
+missing rather than failing with an ENOENT from the template copy.
 
 
 ## Database upgrades
