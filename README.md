@@ -259,11 +259,16 @@ startup the mode is therefore read, and switched only if it is not already WAL:
 [DB] Could not switch to WAL, still 'delete'. ...
 ```
 
-The switch is reported not to take on a cifs mount, which is why the template carries the mode
-pre-set rather than the application setting it; that is also why the mode is only ever written
-when it is actually wrong, and why the outcome is logged instead of assumed. If the last line
-above appears, set the mode on a copy of the file somewhere local, where the switch does work,
-and put that copy in place. The setting lives in the file header and travels with the file.
+The template carries the mode pre-set because the switch was once reported not to take on a
+cifs mount, which is where the whole template trick comes from. On the development App Service
+it does take: a snapshot moved to `/home/Data` on 2026-08-21 arrived as `delete` and was
+switched to WAL on the next startup. So the pre-set template is belt and braces rather than the
+only route, but the mode is still only written when it is actually wrong, and the outcome is
+logged rather than assumed, because one observation on one instance is not a guarantee.
+
+If `Could not switch to WAL` ever does appear, set the mode on a copy of the file somewhere
+local, where the switch definitely works, and put that copy in place. The setting lives in the
+file header and travels with the file, which is exactly what the template relies on.
 
 
 ## Database upgrades
