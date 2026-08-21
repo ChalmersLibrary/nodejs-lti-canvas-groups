@@ -209,6 +209,29 @@ context with no cookie, and the application answers that with the "third-party c
 because from its point of view there is no session. Reach them from inside Canvas instead.
 
 
+## Moving the database off the deployment target
+
+The database lives at `db/tokens.sqlite3` inside `site/wwwroot`, so it survives only because
+Kudu deploys by git checkout; a zip deploy or a move to GitHub Actions would replace the
+directory and take the tokens and the self signup rules with it. `DB_PATH` moves it somewhere
+that is not a deployment target, for example the `/home/Data` share, as an app setting with no
+code change.
+
+Do it in this order, because the application creates an empty database from
+`db/tokens_template.sqlite3` whenever the path does not exist, and would otherwise come up
+looking factory fresh with the real data still at the old path:
+
+1. Snapshot the current database with `VACUUM INTO`, not `cp`, since a plain copy misses
+   whatever is still in the `-wal` file. See the section above.
+2. Put the snapshot at the new path and check it is readable.
+3. Set `DB_PATH` to the full path of the file and restart.
+
+Use the path exactly as `ls` shows it. `/home` is a mounted share that preserves case, and
+whether `/home/Data` and `/home/data` are the same directory depends on the mount, not on this
+application, which uses the path verbatim. The directory has to exist; the application will not
+create it, and says which directory is missing rather than failing with an ENOENT.
+
+
 ## Database upgrades
 
 An existing database file is used as it is; only missing tables are added, so the `sessions` table appears on the first startup after the

@@ -35,6 +35,21 @@ if (fs.existsSync(dbPath) && fs.statSync(dbPath).isDirectory()) {
     throw new Error(`[DB] DB_PATH points at a directory, not a database file: ${dbPath}`);
 }
 
+/* The directory has to be there already; creating it would turn a mistyped DB_PATH into a
+   silently empty database somewhere unexpected. Checked separately so that the failure names
+   the directory rather than arriving as an ENOENT from the template copy below.
+
+   Capitalisation is worth a look when this fires. On Azure App Service /home is a mounted
+   share that preserves case, and whether /home/Data and /home/data are the same directory
+   depends on the mount rather than on anything here; the path is used exactly as given. */
+const dbDirectory = path.dirname(dbPath);
+
+if (!fs.existsSync(dbDirectory)) {
+    throw new Error(`[DB] The directory for the database does not exist: ${dbDirectory} ` +
+        `(from DB_PATH '${process.env.DB_PATH ?? './db/tokens.sqlite3'}'). Create it first, and check the ` +
+        'spelling and the capitalisation.');
+}
+
 /* Magic for Azure; if there is no existing db file, copy one from the template that has  */
 /* journal_mode=WAL set, to work around the cifs mount issue.                             */
 /* https://stackoverflow.com/questions/53226642/sqlite3-database-is-locked-in-azure       */

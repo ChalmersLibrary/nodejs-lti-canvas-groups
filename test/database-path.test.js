@@ -70,6 +70,19 @@ test('a DB_PATH that is set is used', () => {
     assert.ok(fs.existsSync(explicit), 'the file should be at the path that was asked for');
 });
 
+test('a DB_PATH whose directory is missing names the directory, not ENOENT', () => {
+    /* The mistake this catches is a mistyped or miscapitalised path, which on Azure App
+       Service is easy: /home is a case-preserving share, so /home/Data and /home/data may or
+       may not be the same directory depending on the mount. */
+    const missing = path.join(os.tmpdir(), 'lti-nope-' + process.pid, 'Data', 'tokens.sqlite3');
+    const { ok, output } = openWith(missing);
+
+    assert.ok(!ok, 'it must not start with nowhere to put the database');
+    assert.match(output, /directory for the database does not exist/, output);
+    assert.match(output, /capitalisation/, 'the message should point at the likely cause');
+    assert.doesNotMatch(output, /ENOENT/, 'the raw copyfile error should not be what surfaces');
+});
+
 test('a DB_PATH pointing at a directory says so, rather than SQLITE_CANTOPEN', () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'lti-dbdir-'));
     const { ok, output } = openWith(directory);
