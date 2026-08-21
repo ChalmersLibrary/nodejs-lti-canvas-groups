@@ -154,6 +154,54 @@ const applyLaunchUser = (session, provider) => {
 };
 
 /**
+ * Explains an "Invalid Signature" rejection.
+ *
+ * The signature is computed over the launch url as the application sees it, so it only
+ * matches when the protocol, host, port and path are exactly what Canvas signed. Behind a
+ * tunnel or a proxy the application sees http and its own host unless trust proxy is on,
+ * and then the signature can never match however correct the shared secret is. The message
+ * on its own says none of this, so log what went into it.
+ *
+ * The launch body is not logged here; it holds personal data about the user.
+ */
+const logSignatureDiagnostics = (req) => {
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const trustsProxy = Boolean(req.app.get('trust proxy'));
+    const requestPath = (req.originalUrl ?? req.url).split('?')[0];
+
+    log.error(`[LTI] The signature was built over: ${req.protocol}://${req.headers.host}${requestPath}`);
+    log.error('[LTI] Canvas has to be configured with exactly that url, protocol and port included.');
+
+    /* The protocol comes from req.protocol, which only follows x-forwarded-proto when trust
+       proxy is on. Behind an https tunnel without it, every launch signs http and fails. */
+    if (forwardedProto && forwardedProto !== req.protocol && !trustsProxy) {
+        log.error(`[LTI] x-forwarded-proto says '${forwardedProto}' but the url above says '${req.protocol}', ` +
+            'because trust proxy is off. Set trustProxy=true and the protocol will follow the header.');
+    }
+
+    /* ims-lti builds the url from the Host header itself, so x-forwarded-host is never used,
+       and trust proxy makes no difference to it. */
+    if (forwardedHost && forwardedHost !== req.headers.host) {
+        log.error(`[LTI] x-forwarded-host says '${forwardedHost}' but the Host header says '${req.headers.host}'. ` +
+            'ims-lti builds the url from the Host header and ignores x-forwarded-host, and trust proxy does not ' +
+            'change that, so the tunnel or proxy has to pass the original Host through.');
+    }
+
+    if ((req.originalUrl ?? req.url).includes('?')) {
+        log.error('[LTI] The launch url has a query string. For Canvas, ims-lti signs the path only, so a query ' +
+            'string in the configured launch url is a likely cause; remove it if you can.');
+    }
+
+    if (!forwardedProto && !forwardedHost) {
+        log.error('[LTI] No forwarded headers on this request, so the url above is what Canvas has to be pointed at.');
+    }
+
+    log.error(`[LTI] Consumer key used: '${req.body?.oauth_consumer_key}'. If the url above is right, then the ` +
+        'shared secret for that key in ltiConsumerKeys does not match the one in Canvas.');
+};
+
+/**
  * True when Canvas has answered a refresh with http 400, which it does when the approved
  * integration behind the refresh token is gone. The user can remove it themselves in their
  * Canvas settings at any time, and the only way back is a new OAuth flow.
@@ -191,7 +239,16 @@ exports.handleLaunch = (page) => async function (req, res, next) {
 
         const provider = new lti.Provider(consumerKey, getSecret(consumerKey), nonceStore);
 
-        await validateLaunch(provider, req);
+        try {
+            await validateLaunch(provider, req);
+        }
+        catch (error) {
+            if (error instanceof lti.Errors.SignatureError) {
+                logSignatureDiagnostics(req);
+            }
+
+            throw error;
+        }
 
         if (debugLogging) {
             log.info("[LTI] Data: " + JSON.stringify(provider.body));

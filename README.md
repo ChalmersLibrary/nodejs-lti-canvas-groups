@@ -53,6 +53,26 @@ is to set `debugLogging=true`, launch the tool from Canvas once, and copy the la
 Both `.env` and `mock-lti.json` are gitignored. The two example files are not, so keep real tokens and ids out of them.
 
 
+## Launching from Canvas against localhost
+
+The LTI launch is signed over the launch url as this application sees it, so the protocol,
+host, port and path all have to match what Canvas signed. When they do not, the only thing
+ims-lti says is `Invalid Signature`, which reads like a wrong shared secret. On a failure the
+log now prints the url the signature was built over; compare that with the launch url
+configured in Canvas.
+
+Two things to know when Canvas reaches your machine through an https tunnel:
+
+* Set `trustProxy=true`. Otherwise `req.protocol` is `http`, the signature is built over an
+  `http://` url, and no shared secret can make it match.
+* The tunnel has to pass the original `Host` header through. ims-lti builds the url from the
+  `Host` header and never looks at `x-forwarded-host`, and `trustProxy` does not change that.
+
+A query string in the configured launch url is worth avoiding too. For Canvas, ims-lti signs
+the path only and drops the query, so a launch url with a query string can fail even when
+everything else is right. Covered by `test/launch-signature.test.js`.
+
+
 ## Running in Azure App Service
 
 Connect with Github or Bitbucket to your repository. When syncing, the build and install process should kick in and the app should be

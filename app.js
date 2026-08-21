@@ -54,6 +54,15 @@ const sessionOptions = {
     cookie: { maxAge: cookieMaxAge, sameSite: 'none' }
 };
 
+/* Trust the x-forwarded-* headers. Always on in production, where the Azure front end
+   terminates https, and settable on its own for local development behind a tunnel: without
+   it the application sees http and its own host, which makes the LTI launch signature fail
+   however correct the shared secret is. */
+if (process.env.trustProxy === 'true' && process.env.NODE_ENV !== "production") {
+    app.set('trust proxy', 1);
+    log.info('[Main] trust proxy is on, x-forwarded-proto and x-forwarded-host are honoured.');
+}
+
 if (process.env.NODE_ENV === "production") {
     app.set('trust proxy', 1);
     sessionOptions.cookie.secure = true;
