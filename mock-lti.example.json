@@ -1,0 +1,16 @@
+{
+  "_comment": "Copy to mock-lti.json to work on the tool without launching it from Canvas. Read only when NODE_ENV=development and localCanvasDeveloperToken is set, and it fakes a session as if this user had just launched the tool in this course. The easiest way to get real values is to set debugLogging=true, launch from Canvas once and copy the launch body out of the log. mock-lti.json is gitignored; this example is not, so keep real ids out of it.",
+
+  "context_id": "4dde05e8ca1973bcca9bffc13e1548820eee93e3",
+  "context_title": "Testkurs 2026",
+
+  "user_id": "0123456789abcdef0123456789abcdef01234567",
+  "lis_person_name_full": "Test Teacher",
+
+  "custom_canvas_user_id": "12345",
+  "custom_canvas_course_id": "23456",
+  "custom_canvas_enrollment_state": "active",
+
+  "_comment_api_domain": "The Canvas host the tool calls. Only used when canvasBaseUri is not set; with canvasBaseUri set, that wins.",
+  "custom_canvas_api_domain": "chalmers.instructure.com"
+}

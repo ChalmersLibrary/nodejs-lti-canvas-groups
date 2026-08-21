@@ -33,6 +33,26 @@ $ npm test
 http://localhost:3000
 ```
 
+## Local development without Canvas
+
+The tool normally gets everything it knows from an LTI launch, which needs Canvas. To work on it without that, copy the two example files
+and set two variables:
+
+```
+cp .env.example .env
+cp mock-lti.example.json mock-lti.json
+```
+
+In `.env` set `NODE_ENV=development` and `localCanvasDeveloperToken` to a Canvas API token of your own (Canvas: Account, Settings, New Access
+Token). With both of those set, every request gets a session built from `mock-lti.json` as if that user had just launched the tool, so
+`/groups` works straight away. Point `canvasBaseUri` at the Canvas you want to talk to.
+
+Fill `mock-lti.json` with values from a course you can actually see, or the API calls will come back empty. The simplest way to get real ones
+is to set `debugLogging=true`, launch the tool from Canvas once, and copy the launch body out of `log/logfiles/info.log`.
+
+Both `.env` and `mock-lti.json` are gitignored. The two example files are not, so keep real tokens and ids out of them.
+
+
 ## Running in Azure App Service
 
 Connect with Github or Bitbucket to your repository. When syncing, the build and install process should kick in and the app should be
@@ -41,28 +61,13 @@ available on the App Service URI shortly.
 
 ## Environment variables / Azure application settings
 
-`canvasApiCacheSecondsTTL` number of seconds to cache responses from Canvas API. (Optional)
+[.env.example](.env.example) lists every variable the application reads, what it does and which ones are required. Copy it to `.env` for
+local development and fill it in; in Azure the same names go in as App Service application settings. The example file is the authoritative
+list, so that there is only one place to keep up to date.
 
-`canvasBaseUri` used as fallback if API Domain can not be read from LTI. Example: "https://school.instructure.com". (Optional)
-
-`oauthClientId` the client id in Canvas Developer Keys, under Details. (Required)
-
-`oauthClientSecret` the client key in Canvas Developer Keys. (Required)
-
-`ltiConsumerKeys` consumer keys in format "key:secret[,key:secret]". Example: "canvas:abc123,protools:bnn625". Used in the app integration in Canvas. (Required)
-
-`adminCanvasUserIds` comma-separated list of Canvas user ids that should have admin access. Long format id. (Optional)
-
-`debugLogging` set to "true" for some more logging from LTI, etc. (Optional)
-
-`canvasApiConcurrency` how many groups or categories are read from Canvas at the same time. Default 5. Set it to 1 to go back to reading them strictly one after the other, should Canvas start answering 403 because of its own rate limiting. (Optional)
-
-`DB_PATH` path to the sqlite database file. Default `./db/tokens.sqlite3`. The tests point it somewhere else so that they do not write into the database being developed against. (Optional)
-
-`systemApiToken` Canvas API token used for the anonymous public self signup endpoint. (Optional)
-
-**Node version in Azure.** `WEBSITE_NODE_DEFAULT_VERSION` has to be set to a Node 24 runtime (`~24`). The old note here said 12.13.0 because of trouble building the sqlite3 native module; that is no longer an issue, sqlite3 6 ships prebuilt binaries. Check that the runtime is actually available on the App Service plan before deploying, since the Windows flavour of App Service lags behind on Node versions.
-
+**Node version in Azure.** `WEBSITE_NODE_DEFAULT_VERSION` has to be set to a Node 24 runtime (`~24`). An older note here said 12.13.0
+because of trouble building the sqlite3 native module; that is no longer an issue, sqlite3 6 ships prebuilt binaries. Check that the runtime
+is actually available on the App Service plan before deploying, since the Windows flavour of App Service lags behind on Node versions.
 
 
 ## Integrating in Canvas
@@ -103,8 +108,24 @@ Because of limitations with Azure file system logging we use Winston to write lo
 
 ## Special tricks
 
-If you for some reason want to clear all sessions and authorized users, delete the database file in the `db/` folder. It holds both the
-tokens and the sessions, and the tables are created again from the template on startup.
+The database holds three kinds of data and only two of them are throwaway:
+
+| Table | What it is | Safe to lose? |
+| --- | --- | --- |
+| `sessions` | who is logged in right now | Yes, users go through a new LTI launch |
+| `tokens` | Canvas API authorizations per user | Yes, users are asked to authorize once more |
+| `self_signup_config` | the group rules teachers have set up per course | **No.** This is configuration and there is no copy of it anywhere |
+
+So do not delete the database file to clear sessions or authorizations, which the previous version of this section suggested: it takes every
+configured self signup rule with it, and nobody notices until a rule quietly stops applying. Delete from the table you actually mean:
+
+```sql
+DELETE FROM sessions;   -- log everyone out
+DELETE FROM tokens;     -- send everyone through Canvas OAuth again
+```
+
+Both of those refill by themselves. If you do delete the whole file, it is recreated from the template on the next startup with empty tables,
+and the self signup rules are gone for good.
 
 
 ## Reading the database on Azure
