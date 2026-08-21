@@ -1,228 +1,213 @@
 'use strict';
 
-const sqlite3 = require('sqlite3').verbose();
+const fs = require('node:fs');
+const path = require('node:path');
+const sqlite3 = require('sqlite3');
 const log = require('../log');
-const path = require('path');
-const dbPath = path.resolve('./db/tokens.sqlite3');
-const dbTemplatePath = path.resolve('./db/tokens_template.sqlite3');
-const fs = require('fs');
 
-// magic for azure; if no existing db file, copy from template with journal_mode=WAL to fix cifs mount issue
-// https://stackoverflow.com/questions/53226642/sqlite3-database-is-locked-in-azure/66567897
+/* The path can be pointed somewhere else with DB_PATH, so that a test run does not write */
+/* into the database that is being developed against.                                     */
+const dbPath = path.resolve(process.env.DB_PATH ?? './db/tokens.sqlite3');
+const dbTemplatePath = path.resolve(__dirname, 'tokens_template.sqlite3');
+
+/* Magic for Azure; if there is no existing db file, copy one from the template that has  */
+/* journal_mode=WAL set, to work around the cifs mount issue.                             */
+/* https://stackoverflow.com/questions/53226642/sqlite3-database-is-locked-in-azure       */
+/* The copies are synchronous on purpose: the database below is opened on the next line   */
+/* and an asynchronous copy is not necessarily finished by then.                          */
 if (!fs.existsSync(dbPath)) {
-    fs.copyFile(dbTemplatePath, dbPath, (err) => {
-        if (err) throw err;
-        log.info('[DB] No database file, created one using template (to fix Azure cifs mount bug).');
-    });
-    fs.copyFile(dbTemplatePath + '-shm', dbPath + '-shm', (err) => {
-        if (err) throw err;
-    });
-    fs.copyFile(dbTemplatePath + '-wal', dbPath + '-wal', (err) => {
-        if (err) throw err;
-    });
+    for (const suffix of ['', '-shm', '-wal']) {
+        fs.copyFileSync(dbTemplatePath + suffix, dbPath + suffix);
+    }
+
+    log.info('[DB] No database file, created one using template (to fix Azure cifs mount bug).');
 }
 
-// open database file
 const db = new sqlite3.Database(dbPath);
-// db.run('PRAGMA journal_mode=wal;');
-log.info("[DB] Database file opened: " + dbPath);
 
-// call the setup function to create the table if it doesn't exist
-setupDatabase();
+log.info('[DB] Database file opened: ' + dbPath);
 
-// function to set up the database
-async function setupDatabase() {
-  return new Promise((resolve, reject) => {
-    db.serialize(() => {
-        db.run('CREATE TABLE IF NOT EXISTS tokens (user_id TEXT NOT NULL, user_env TEXT NOT NULL, api_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at_utc DATETIME NOT NULL, updated_at DATETIME NOT NULL DEFAULT current_timestamp, PRIMARY KEY (user_id, user_env))', (err) => {
-            if (err) reject(err);
-            
-        log.info("[DB] Database main table 'tokens' ready.");
-        resolve();
-      });
+/* sqlite3 has a callback API. These are the three shapes of query used here, as promises. */
+/* Note the return on every error path; without it the callback carries on and resolves a   */
+/* promise it has already rejected, which hides the error.                                  */
+
+const run = (sql, params = []) => new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+        if (err) {
+            return reject(err);
+        }
+
+        resolve({ changes: this.changes, lastID: this.lastID });
     });
-    db.serialize(() => {
-        db.run('CREATE TABLE IF NOT EXISTS self_signup_config (canvas_course_id INTEGER NOT NULL, group_category_id INTEGER NOT NULL, assignment_id INTEGER NOT NULL, description TEXT, min_points INTEGER NOT NULL, created_at DATETIME NOT NULL DEFAULT current_timestamp, PRIMARY KEY (canvas_course_id, group_category_id))', (err) => {
-            if (err) reject(err);
-            
-        log.info("[DB] Database table 'self_signup_config' ready.");
-        resolve();
-      });
+});
+
+const all = (sql, params = []) => new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            return reject(err);
+        }
+
+        resolve(rows);
     });
-  });
-}
+});
+
+const get = (sql, params = []) => new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+        if (err) {
+            return reject(err);
+        }
+
+        resolve(row);
+    });
+});
+
+/**
+ * Creates the tables if they are not there. Every exported function awaits this, so a
+ * request that arrives before the tables exist waits for them instead of failing.
+ */
+const ready = (async () => {
+    await run('CREATE TABLE IF NOT EXISTS tokens (user_id TEXT NOT NULL, user_env TEXT NOT NULL, api_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at_utc DATETIME NOT NULL, updated_at DATETIME NOT NULL DEFAULT current_timestamp, PRIMARY KEY (user_id, user_env))');
+    log.info("[DB] Database main table 'tokens' ready.");
+
+    await run('CREATE TABLE IF NOT EXISTS self_signup_config (canvas_course_id INTEGER NOT NULL, group_category_id INTEGER NOT NULL, assignment_id INTEGER NOT NULL, description TEXT, min_points INTEGER NOT NULL, created_at DATETIME NOT NULL DEFAULT current_timestamp, PRIMARY KEY (canvas_course_id, group_category_id))');
+    log.info("[DB] Database table 'self_signup_config' ready.");
+
+    await run('CREATE TABLE IF NOT EXISTS sessions (sid TEXT NOT NULL PRIMARY KEY, expires_at_utc TEXT NOT NULL, data TEXT NOT NULL)');
+    await run('CREATE INDEX IF NOT EXISTS sessions_expires_at_utc ON sessions (expires_at_utc)');
+    log.info("[DB] Database table 'sessions' ready.");
+})();
+
+ready.catch((error) => {
+    log.error('[DB] The database could not be prepared: ' + error);
+});
 
 async function getAllClientsData() {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-            db.all('SELECT DISTINCT user_id, user_env, api_token, refresh_token, expires_at_utc, updated_at FROM tokens ORDER BY updated_at DESC', (err, rows) => {
-                if (err) reject(err);
+    await ready;
 
-                const clientData = [];
+    const rows = await all('SELECT DISTINCT user_id, user_env, api_token, refresh_token, expires_at_utc, updated_at FROM tokens ORDER BY updated_at DESC');
 
-                rows.forEach((row) => {
-                    clientData.push({
-                        user_id: row.user_id,
-                        user_env: row.user_env,
-                        api_token: row.api_token,
-                        refresh_token: row.refresh_token,
-                        expires_at: new Date(row.expires_at_utc).toISOString(),
-                        updated_at: new Date(row.updated_at).toISOString()
-                    });
-                });
-
-                resolve(clientData);
-            });
-        });
-    });
+    return rows.map((row) => ({
+        user_id: row.user_id,
+        user_env: row.user_env,
+        api_token: row.api_token,
+        refresh_token: row.refresh_token,
+        expires_at: new Date(row.expires_at_utc).toISOString(),
+        updated_at: new Date(row.updated_at).toISOString()
+    }));
 }
 
 async function getAllSelfSignupConfigData() {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-            db.all('SELECT DISTINCT canvas_course_id, group_category_id, assignment_id, created_at FROM self_signup_config ORDER BY created_at DESC', (err, rows) => {
-                if (err) reject(err);
+    await ready;
 
-                const clientData = [];
+    const rows = await all('SELECT DISTINCT canvas_course_id, group_category_id, assignment_id, created_at FROM self_signup_config ORDER BY created_at DESC');
 
-                rows.forEach((row) => {
-                    clientData.push({
-                        canvas_course_id: row.canvas_course_id,
-                        group_category_id: row.group_category_id,
-                        assignment_id: row.assignment_id,
-                        created_at: new Date(row.created_at).toISOString()
-                    });
-                });
-
-                resolve(clientData);
-            });
-        });
-    });
+    return rows.map((row) => ({
+        canvas_course_id: row.canvas_course_id,
+        group_category_id: row.group_category_id,
+        assignment_id: row.assignment_id,
+        created_at: new Date(row.created_at).toISOString()
+    }));
 }
 
-async function getAllClientsDataMocked() {
-    return new Promise((resolve, reject) => {
-        log.info("[DB] Mocking up data for all clients.");
+/* Test data for /test/sqlite3. Building it involves nothing asynchronous. */
+function getAllClientsDataMocked() {
+    log.info('[DB] Mocking up data for all clients.');
 
-        var clientData = [];
-
-        var thisData1 = { user_id: "abcdef_123456", user_env: "test", api_token: "api_token_1", refresh_token: "refresh_token_1",
-        expires_at: new Date("2020-02-03T01:30:00Z").toISOString(), updated_at: new Date("2020-02-03T00:30:00Z").toISOString()};
-        var thisData2 = { user_id: "abcdef_746343", user_env: "test", api_token: "api_token_2", refresh_token: "refresh_token_2",
-        expires_at: new Date("2020-02-03T03:30:00Z").toISOString(), updated_at: new Date("2020-02-03T02:30:00Z").toISOString()};
-        var thisData3 = { user_id: "bavads_746343", user_env: "test", api_token: "api_token_3", refresh_token: "refresh_token_3",
-        expires_at: new Date("2020-02-02T21:30:00Z").toISOString(), updated_at: new Date("2020-02-02T20:30:00Z").toISOString()};
-
-        clientData.push(thisData1);    
-        clientData.push(thisData2);
-        clientData.push(thisData3);
-
-        resolve(clientData);
-    });
+    return [
+        { user_id: "abcdef_123456", user_env: "test", api_token: "api_token_1", refresh_token: "refresh_token_1",
+          expires_at: new Date("2020-02-03T01:30:00Z").toISOString(), updated_at: new Date("2020-02-03T00:30:00Z").toISOString() },
+        { user_id: "abcdef_746343", user_env: "test", api_token: "api_token_2", refresh_token: "refresh_token_2",
+          expires_at: new Date("2020-02-03T03:30:00Z").toISOString(), updated_at: new Date("2020-02-03T02:30:00Z").toISOString() },
+        { user_id: "bavads_746343", user_env: "test", api_token: "api_token_3", refresh_token: "refresh_token_3",
+          expires_at: new Date("2020-02-02T21:30:00Z").toISOString(), updated_at: new Date("2020-02-02T20:30:00Z").toISOString() }
+    ];
 }
 
 async function setClientData(userId, env, token, refresh, expires) {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-          const stmt = db.prepare('INSERT OR REPLACE INTO tokens (user_id, user_env, api_token, refresh_token, expires_at_utc) VALUES (?, ?, ?, ?, ?)');
-          stmt.run(userId, env, token, refresh, expires, (err) => {
-            if (err) reject(err);
-            
-            log.info("[DB] Created/replaced token data for user_id '" + userId + "'");
-            resolve();
-          });
-          stmt.finalize();
-        });
-    });
+    await ready;
+
+    await run(
+        'INSERT INTO tokens (user_id, user_env, api_token, refresh_token, expires_at_utc, updated_at) VALUES (?, ?, ?, ?, ?, current_timestamp) ' +
+        'ON CONFLICT (user_id, user_env) DO UPDATE SET api_token = excluded.api_token, refresh_token = excluded.refresh_token, expires_at_utc = excluded.expires_at_utc, updated_at = current_timestamp',
+        [userId, env, token, refresh, expires instanceof Date ? expires.toISOString() : expires]
+    );
+
+    log.info("[DB] Created/replaced token data for user_id '" + userId + "'");
 }
 
-
+/**
+ * The token data for a user, or null when there is none. A missing token is a normal
+ * state that the caller decides what to do about, so it is not an error here.
+ */
 async function getClientData(userId, env) {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-            db.all('SELECT DISTINCT user_id, user_env, api_token, refresh_token, expires_at_utc FROM tokens WHERE user_id = ? AND user_env = ?', [userId, env], (err, rows) => {
-                if (err) reject(err);
-                
-                let tokenData = {};
-    
-                if (rows.length) {
-                    tokenData.access_token = rows[0].api_token;
-                    tokenData.token_type = "Bearer";
-                    tokenData.refresh_token = rows[0].refresh_token;
-                    tokenData.expires_in = 3600;
-                    tokenData.expires_at_utc = new Date(rows[0].expires_at_utc);
-    
-                    resolve(tokenData);
-                }
-                else {
-                    log.info("[DB] No data in db for userId '" + userId + "'.");
-    
-                    reject('No data');
-                }
-            });
-        });
-    });
+    await ready;
+
+    const row = await get('SELECT user_id, user_env, api_token, refresh_token, expires_at_utc FROM tokens WHERE user_id = ? AND user_env = ?', [userId, env]);
+
+    if (!row) {
+        log.info("[DB] No data in db for userId '" + userId + "'.");
+
+        return null;
+    }
+
+    return {
+        access_token: row.api_token,
+        token_type: "Bearer",
+        refresh_token: row.refresh_token,
+        expires_in: 3600,
+        expires_at_utc: new Date(row.expires_at_utc)
+    };
 }
 
-async function setSelfSignupConfig(courseId, groupCategoryId, assignmentId, comment, minPoints, env) {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-          const stmt = db.prepare('INSERT OR REPLACE INTO self_signup_config (canvas_course_id, group_category_id, assignment_id, description, min_points) VALUES (?, ?, ?, ?, ?)');
-          stmt.run(courseId, groupCategoryId, assignmentId, comment, minPoints, (err) => {
-            if (err) reject(err);
-            
-            log.info("[DB] Created/replaced self_signup_config data for course_id '" + courseId + "', assignment_id '" + assignmentId + "'");
-            resolve();
-          });
-          stmt.finalize();
-        });
-    });
+async function setSelfSignupConfig(courseId, groupCategoryId, assignmentId, comment, minPoints) {
+    await ready;
+
+    await run(
+        'INSERT INTO self_signup_config (canvas_course_id, group_category_id, assignment_id, description, min_points) VALUES (?, ?, ?, ?, ?) ' +
+        'ON CONFLICT (canvas_course_id, group_category_id) DO UPDATE SET assignment_id = excluded.assignment_id, description = excluded.description, min_points = excluded.min_points',
+        [courseId, groupCategoryId, assignmentId, comment, minPoints]
+    );
+
+    log.info("[DB] Created/replaced self_signup_config data for course_id '" + courseId + "', assignment_id '" + assignmentId + "'");
 }
 
+/**
+ * The rule for one group category, or null when the category has none.
+ */
 async function getSelfSignupConfig(courseId, groupCategoryId) {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-            db.all('SELECT DISTINCT canvas_course_id, group_category_id, assignment_id, description, min_points, created_at FROM self_signup_config WHERE canvas_course_id = ? AND group_category_id = ?', [courseId, groupCategoryId], (err, rows) => {
-                if (err) reject(err);
-                
-                let configData = {};
+    await ready;
 
-                if (rows) {
-                    resolve(rows[0]);
-                }
-                else {
-                    log.info("[DB] No data in db for courseId '" + courseId + "', groupCategoryId '" + groupCategoryId + "'");
+    const row = await get('SELECT canvas_course_id, group_category_id, assignment_id, description, min_points, created_at FROM self_signup_config WHERE canvas_course_id = ? AND group_category_id = ?', [courseId, groupCategoryId]);
 
-                    reject('No data');
-                }
-            });
-        });
-    });
+    return row ?? null;
 }
 
 async function getSelfSignupConnectedAssignments(courseId) {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-            db.all('SELECT DISTINCT canvas_course_id, group_category_id, assignment_id, min_points, description FROM self_signup_config WHERE canvas_course_id = ?', [courseId], (err, rows) => {
-                if (err) reject(err);
-                resolve(rows);
-            });
-        });
-    });
+    await ready;
+
+    return all('SELECT DISTINCT canvas_course_id, group_category_id, assignment_id, min_points, description FROM self_signup_config WHERE canvas_course_id = ?', [courseId]);
 }
 
 async function clearSelfSignupConfig(courseId, groupCategoryId) {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-            db.all('DELETE FROM self_signup_config WHERE canvas_course_id = ? AND group_category_id = ?', [courseId, groupCategoryId], (err, rows) => {
-                if (err) reject(err);
-                resolve();
-            });
-        });
-    });
+    await ready;
+
+    const { changes } = await run('DELETE FROM self_signup_config WHERE canvas_course_id = ? AND group_category_id = ?', [courseId, groupCategoryId]);
+
+    return changes;
 }
 
+/**
+ * Closes the connection. Only needed so that a test can let the process end.
+ */
+const close = () => new Promise((resolve, reject) => {
+    db.close((err) => err ? reject(err) : resolve());
+});
+
 module.exports = {
+    ready,
+    close,
+    /* The session store builds its own queries against the same connection. */
+    sql: { run, all, get },
     getAllClientsDataMocked,
     getAllClientsData,
     getAllSelfSignupConfigData,
@@ -232,4 +217,4 @@ module.exports = {
     getSelfSignupConfig,
     getSelfSignupConnectedAssignments,
     clearSelfSignupConfig
-}
+};

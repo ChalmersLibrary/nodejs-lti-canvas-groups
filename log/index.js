@@ -1,8 +1,8 @@
 'use strict';
 
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
+const path = require('node:path');
 const winston = require('winston');
-const path = require('path');
 
 const logFormatConsole = winston.format.combine(
     winston.format.colorize(),
@@ -41,37 +41,22 @@ const logger = winston.createLogger({
 
 const globalDebugMode = process.env.NODE_ENV === "development";
 
-exports.info = async (msg) => new Promise(async function (resolve, reject) {
-    try {
-        const timestamp = new Date().toISOString();
-        logger.info(`[PID:${process.pid}][PPID:${process.ppid}] ${msg}`);
-        resolve(true);
-    }
-    catch (error) {
-        reject(error);
-    }
-});
+/* Writing a log entry is not an asynchronous operation, so these do not return a promise. */
+/* They used to, which made every call site produce a promise that nobody waited for and  */
+/* nobody handled if it rejected.                                                          */
 
-exports.debug = async (msg) => new Promise(async function (resolve, reject) {
+const prefix = () => `[PID:${process.pid}][PPID:${process.ppid}]`;
+
+exports.info = (msg) => {
+    logger.info(`${prefix()} ${msg}`);
+};
+
+exports.debug = (msg) => {
     if (globalDebugMode) {
-        try {
-            const timestamp = new Date().toISOString();
-            logger.debug(`[PID:${process.pid}][PPID:${process.ppid}] ${msg}`);
-        }
-        catch (error) {
-            reject(error);
-        }    
+        logger.debug(`${prefix()} ${msg}`);
     }
-    resolve(true);
-});
+};
 
-exports.error = async (msg) => new Promise(async function (resolve, reject) {
-    try {
-        const timestamp = new Date().toISOString();
-        logger.error(`[PID:${process.pid}][PPID:${process.ppid}] ${msg}`);
-        resolve(true);
-    }
-    catch (error) {
-        reject(error);
-    }
-});
+exports.error = (msg) => {
+    logger.error(`${prefix()} ${msg}`);
+};

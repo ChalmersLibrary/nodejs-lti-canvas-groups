@@ -9,6 +9,11 @@ This project is forked from https://github.com/js-kyle/nodejs-lti-provider which
 application written in Node.js by Kyle Martin.
 
 
+## Requirements
+
+Node.js 24 or later (see `.nvmrc`). The version is enforced by `engines` in `package.json`.
+
+
 ## Installation
 
 ```
@@ -17,6 +22,12 @@ $ npm install
 
 # Run the app
 $ npm start
+
+# Run the app and restart on file changes
+$ npm run dev
+
+# Run the tests (signed LTI launch, OAuth and group views against a mocked Canvas API)
+$ npm test
 
 # Access from browser
 http://localhost:3000
@@ -44,7 +55,13 @@ available on the App Service URI shortly.
 
 `debugLogging` set to "true" for some more logging from LTI, etc. (Optional)
 
-**Important!** `WEBSITE_NODE_DEFAULT_VERSION` in Chalmers' production environment is set to **12.13.0** due to some limitations in compiling SqlLite3 modules when running higher versions of node. Not sure what this problem is and I'll look into it later.
+`canvasApiConcurrency` how many groups or categories are read from Canvas at the same time. Default 5. Set it to 1 to go back to reading them strictly one after the other, should Canvas start answering 403 because of its own rate limiting. (Optional)
+
+`DB_PATH` path to the sqlite database file. Default `./db/tokens.sqlite3`. The tests point it somewhere else so that they do not write into the database being developed against. (Optional)
+
+`systemApiToken` Canvas API token used for the anonymous public self signup endpoint. (Optional)
+
+**Node version in Azure.** `WEBSITE_NODE_DEFAULT_VERSION` has to be set to a Node 24 runtime (`~24`). The old note here said 12.13.0 because of trouble building the sqlite3 native module; that is no longer an issue, sqlite3 6 ships prebuilt binaries. Check that the runtime is actually available on the App Service plan before deploying, since the Windows flavour of App Service lags behind on Node versions.
 
 
 
@@ -68,9 +85,15 @@ The view `loading` is a proxy web page for displaying a progress bar until next 
 
 ## Storage and session cookies
 
-This app uses `Sqlite3` for storing user's access tokens for Canvas API, once they have authorized the app in Canvas. For connecting this
-data the module `express-session` is used to set session cookies, where the data is stored in the file system. Remember that the user needs 
+This app uses `Sqlite3` for storing the user's access tokens for the Canvas API, once they have authorized the app in Canvas. Sessions are
+kept in the same database, through the store in `session-store/`, and `express-session` sets the session cookie. Remember that the user needs
 to accept third-party cookies as the app is loaded inline in Canvas.
+
+Sessions used to be kept as one json file per session by `session-file-store`. That store rewrote the whole file on every request, including
+the touch that a rolling cookie causes, and on Azure those files live on a network share. Overlapping read-modify-writes lost updates there,
+which is how a session could come back without its access token. The sqlite store writes only the expiry column when a request has not
+changed the session, so a request can no longer roll back what another one has just written. The database remains the source of truth for the
+token, and it is read back whenever the session has nothing usable.
 
 
 ## Logging
@@ -80,8 +103,8 @@ Because of limitations with Azure file system logging we use Winston to write lo
 
 ## Special tricks
 
-If you for some reason want to clear all sessions and authorized users, first delete all session files and then delete the database file
-in the `db/` folder. When the system detects an error in Sqlite query, the main table will be created again.
+If you for some reason want to clear all sessions and authorized users, delete the database file in the `db/` folder. It holds both the
+tokens and the sessions, and the tables are created again from the template on startup.
 
 
 ## About LTI
