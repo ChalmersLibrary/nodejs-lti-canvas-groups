@@ -339,8 +339,7 @@ app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
                     id: group.id,
                     name: group.name,
                     passed: userSubmission.score >= assignment.min_points,
-                    description: assignment.description,
-                    debug: userSubmission
+                    description: assignment.description
                 });
             }
         }
