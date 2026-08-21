@@ -99,7 +99,10 @@ everything else is right. Covered by `test/launch-signature.test.js`.
 ## Running in Azure App Service
 
 Connect with Github or Bitbucket to your repository. When syncing, the build and install process should kick in and the app should be
-available on the App Service URI shortly.
+available on the App Service URI shortly. That is one way; a GitHub Actions workflow or any other zip based deploy works as well.
+
+Whichever you choose, decide where the sqlite database lives before you go live, because the default path is inside the directory a deploy
+replaces. See [Moving the database off the deployment target](#moving-the-database-off-the-deployment-target).
 
 
 ## Environment variables / Azure application settings
@@ -111,9 +114,10 @@ list, so that there is only one place to keep up to date.
 The one worth singling out is `DB_PATH`, which in Azure should point outside `site/wwwroot`. See
 [Moving the database off the deployment target](#moving-the-database-off-the-deployment-target).
 
-**Node version in Azure.** `WEBSITE_NODE_DEFAULT_VERSION` is set to `~24`, and `~22` also works if you need to go back. An older note here said 12.13.0
-because of trouble building the sqlite3 native module; that is no longer an issue, sqlite3 6 ships prebuilt binaries. Check that the runtime
-is actually available on the App Service plan before deploying, since the Windows flavour of App Service lags behind on Node versions.
+**Node version in Azure.** Set `WEBSITE_NODE_DEFAULT_VERSION` to a Node 22 or later runtime, for example `~24`. An older note here said
+12.13.0 because of trouble building the sqlite3 native module; that is no longer an issue, sqlite3 6 ships prebuilt binaries. Check that the
+runtime you pick is actually available on your App Service plan before deploying, since the Windows flavour of App Service lags behind on
+Node versions.
 
 
 ## Integrating in Canvas
@@ -149,10 +153,11 @@ token, and it is read back whenever the session has nothing usable.
 
 ## Logging
 
-Because of limitations with Azure file system logging we use Winston to write logs to `logs/logfiles` directory. The default is 50M logs rotated at max 10 files each.
+Because of limitations with Azure file system logging, Winston writes logs to the `logs/logfiles` directory. The default is 50M logs rotated at max 10 files each.
 
 `debugLogging=true` adds the launch body and the session to the log, which is what you want when a launch misbehaves. The fields that
-identify the person are written as `<redacted>`: `lis_person_sourcedid`, which at Chalmers carries the personnummer, together with the name
+identify the person are written as `<redacted>`: `lis_person_sourcedid`, which depending on the SIS integration can carry a national
+identity number, together with the name
 fields, the email, the login id and the avatar url. The opaque `user_id` and `custom_canvas_user_id` are kept, since they are what the tokens
 table is keyed on and a launch cannot be followed without them. Access tokens and refresh tokens are never logged at all.
 
@@ -170,8 +175,8 @@ The database holds three kinds of data and only two of them are throwaway:
 | `tokens` | Canvas API authorizations per user | Yes, users are asked to authorize once more |
 | `self_signup_config` | the group rules teachers have set up per course | **No.** This is configuration and there is no copy of it anywhere |
 
-So do not delete the database file to clear sessions or authorizations, which the previous version of this section suggested: it takes every
-configured self signup rule with it, and nobody notices until a rule quietly stops applying. Delete from the table you actually mean:
+So do not delete the database file to clear sessions or authorizations: it takes every configured self signup rule with it, and nobody
+notices until a rule quietly stops applying. Delete from the table you actually mean:
 
 ```sql
 DELETE FROM sessions;   -- log everyone out
@@ -214,21 +219,24 @@ because from its point of view there is no session. Reach them from inside Canva
 
 ## Moving the database off the deployment target
 
-By default the database lives at `db/tokens.sqlite3`, which is inside `site/wwwroot`, the
-directory a deploy replaces. It survives today only because Kudu deploys by git checkout, which
-leaves untracked files where they are.
+By default the database lives at `db/tokens.sqlite3`, which is inside the application
+directory. Whether it survives a deploy then depends entirely on how you deploy:
 
-That is a thin thread to hang the data on. A zip deploy, which is what a GitHub Actions workflow
-normally does, unpacks the repository over `wwwroot` on every run and takes the database with
-it. Run from package goes further and mounts `wwwroot` read-only, so the application could not
-write there at all. In both cases the tokens go, which costs users a silent reauthorization, and
-every self signup rule a teacher has configured goes with them, which is not recoverable. It has
-happened once already, in a different way: the file was moved aside during debugging in August
-2026 and 68 rules had to be merged back from the old copy.
+* A deploy that does a git checkout or fetch into the existing directory leaves untracked files
+  where they are, so the database survives. This is the only arrangement in which the default
+  path is safe.
+* A zip deploy, which is what a GitHub Actions workflow normally does, unpacks the repository
+  over the application directory on every run and takes the database with it.
+* Run from package mounts the application directory read-only, so the application cannot write
+  a database there at all.
 
-`DB_PATH` moves the database somewhere that is not a deployment target, for example the
-`/home/Data` share, which persists across deploys and restarts. It is an app setting, with no
-code change. Development moved on 2026-08-21; production has not.
+Losing the file costs every user a reauthorization, which is silent and cheap, and every self
+signup rule a teacher has configured, which is neither: nothing else holds a copy of those.
+
+Set `DB_PATH` to somewhere outside whatever your deploy replaces and the question goes away. On
+Azure App Service that means a path under `/home` other than `/home/site`, for example
+`/home/Data/<something>/grouptool.sqlite`; `/home` is persistent storage that survives deploys
+and restarts. It is one app setting, with no code change.
 
 Do it in this order, because the application creates an empty database from
 `db/tokens_template.sqlite3` whenever the path does not exist, and would otherwise come up
@@ -244,12 +252,11 @@ looking factory fresh with the real data still at the old path:
 Use a subdirectory of your own rather than the share root, so that the file is not mixed in
 with what Azure puts there: `DB_PATH=/home/Data/grouptool/tokens.sqlite3`.
 
-Mind the capitalisation. `ls -F /home` shows `Data/`, and that mount turns out to be
-case-insensitive but case-preserving, so `/home/data` and `/home/Data` do reach the same
-directory (checked on the development App Service, 2026-08-21). Write it the way `ls` shows it
-anyway: that behaviour belongs to the mount and not to this application, which uses the path
-verbatim, so the canonical spelling is the one that keeps working if the path is ever read
-somewhere case-sensitive.
+Mind the capitalisation, and write the path the way `ls` shows it. The `/home` mount on App
+Service has been observed to be case-insensitive but case-preserving, so `/home/data` and
+`/home/Data` reached the same directory, but that is a property of the mount rather than of this
+application, which uses the path exactly as given. The canonical spelling is the one that keeps
+working if the path is ever read somewhere case-sensitive.
 
 The directory has to exist; the application will not create one, and says which directory is
 missing rather than failing with an ENOENT from the template copy.
@@ -272,15 +279,14 @@ startup the mode is therefore read, and switched only if it is not already WAL:
 [DB] Could not switch to WAL, still 'delete'. ...
 ```
 
-The template carries the mode pre-set because the switch was once reported not to take on a
-cifs mount, which is where the whole template trick comes from. On the development App Service
-it does take: a snapshot moved to `/home/Data` on 2026-08-21 arrived as `delete` and was
-switched to WAL on the next startup. So the pre-set template is belt and braces rather than the
-only route, but the mode is still only written when it is actually wrong, and the outcome is
-logged rather than assumed, because one observation on one instance is not a guarantee.
+The template carries the mode pre-set because the switch has been reported not to take on a
+cifs mount, which is where the template trick comes from. It has since been observed to work on
+an App Service share, so the pre-set template is belt and braces rather than the only route.
+Since that is one observation and not a guarantee, the mode is written only when it is actually
+wrong, and the outcome is logged rather than assumed.
 
-If `Could not switch to WAL` ever does appear, set the mode on a copy of the file somewhere
-local, where the switch definitely works, and put that copy in place. The setting lives in the
+If `Could not switch to WAL` does appear, set the mode on a copy of the file on a local
+filesystem, where the switch is reliable, and put that copy in place. The setting lives in the
 file header and travels with the file, which is exactly what the template relies on.
 
 
