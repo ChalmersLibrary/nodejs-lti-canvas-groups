@@ -249,10 +249,21 @@ without it concurrent requests produce "database is locked". It used to be inher
 `db/tokens_template.sqlite3`, which only covers a database the application created itself.
 
 `VACUUM INTO` writes its output in the default rollback journal mode, so a snapshot taken to
-move the database arrives as `journal_mode=delete` and would quietly lose the workaround. The
-application therefore sets WAL on startup rather than relying on where the file came from. The
-setting lives in the file header, so it is a no-op on every start after the first, and the log
-says `[DB] Journal mode is WAL.` when it is in place.
+move the database arrives as `journal_mode=delete` and would quietly lose the workaround. On
+startup the mode is therefore read, and switched only if it is not already WAL:
+
+```
+[DB] Journal mode is WAL.                                  nothing to do
+[DB] Journal mode is 'delete', trying to switch to WAL.     followed by one of
+[DB] Journal mode is now WAL.
+[DB] Could not switch to WAL, still 'delete'. ...
+```
+
+The switch is reported not to take on a cifs mount, which is why the template carries the mode
+pre-set rather than the application setting it; that is also why the mode is only ever written
+when it is actually wrong, and why the outcome is logged instead of assumed. If the last line
+above appears, set the mode on a copy of the file somewhere local, where the switch does work,
+and put that copy in place. The setting lives in the file header and travels with the file.
 
 
 ## Database upgrades

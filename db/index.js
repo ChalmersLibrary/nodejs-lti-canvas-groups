@@ -158,14 +158,28 @@ const ready = (async () => {
        Setting it here does not depend on where the file came from. It is persistent in the
        file header, so this is a no-op on every startup after the first. */
     try {
-        const journal = await get('PRAGMA journal_mode=WAL');
+        const current = await get('PRAGMA journal_mode');
 
-        if (journal?.journal_mode === 'wal') {
+        if (current?.journal_mode === 'wal') {
             log.info('[DB] Journal mode is WAL.');
         }
         else {
-            log.error(`[DB] The database is in '${journal?.journal_mode}' journal mode, not WAL. On a network ` +
-                'share that shows up as "database is locked" once more than one request writes at a time.');
+            /* Only ever attempted when it is actually needed. Setting the mode is a write to
+               the file header and the switch is reported not to take on a cifs mount, which is
+               why the template carries it pre-set; there is nothing to gain from trying it
+               against a database that is already right. */
+            log.info(`[DB] Journal mode is '${current?.journal_mode}', trying to switch to WAL.`);
+
+            const changed = await get('PRAGMA journal_mode=WAL');
+
+            if (changed?.journal_mode === 'wal') {
+                log.info('[DB] Journal mode is now WAL.');
+            }
+            else {
+                log.error(`[DB] Could not switch to WAL, still '${changed?.journal_mode}'. On the Azure network ` +
+                    'share that turns into "database is locked" once two requests write at once. Set the mode on ' +
+                    'a copy of the file somewhere local, where the switch does work, and put that copy in place.');
+            }
         }
     }
     catch (error) {
