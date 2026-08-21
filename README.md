@@ -108,6 +108,9 @@ available on the App Service URI shortly.
 local development and fill it in; in Azure the same names go in as App Service application settings. The example file is the authoritative
 list, so that there is only one place to keep up to date.
 
+The one worth singling out is `DB_PATH`, which in Azure should point outside `site/wwwroot`. See
+[Moving the database off the deployment target](#moving-the-database-off-the-deployment-target).
+
 **Node version in Azure.** `WEBSITE_NODE_DEFAULT_VERSION` is set to `~24`, and `~22` also works if you need to go back. An older note here said 12.13.0
 because of trouble building the sqlite3 native module; that is no longer an issue, sqlite3 6 ships prebuilt binaries. Check that the runtime
 is actually available on the App Service plan before deploying, since the Windows flavour of App Service lags behind on Node versions.
@@ -211,11 +214,21 @@ because from its point of view there is no session. Reach them from inside Canva
 
 ## Moving the database off the deployment target
 
-The database lives at `db/tokens.sqlite3` inside `site/wwwroot`, so it survives only because
-Kudu deploys by git checkout; a zip deploy or a move to GitHub Actions would replace the
-directory and take the tokens and the self signup rules with it. `DB_PATH` moves it somewhere
-that is not a deployment target, for example the `/home/Data` share, as an app setting with no
-code change.
+By default the database lives at `db/tokens.sqlite3`, which is inside `site/wwwroot`, the
+directory a deploy replaces. It survives today only because Kudu deploys by git checkout, which
+leaves untracked files where they are.
+
+That is a thin thread to hang the data on. A zip deploy, which is what a GitHub Actions workflow
+normally does, unpacks the repository over `wwwroot` on every run and takes the database with
+it. Run from package goes further and mounts `wwwroot` read-only, so the application could not
+write there at all. In both cases the tokens go, which costs users a silent reauthorization, and
+every self signup rule a teacher has configured goes with them, which is not recoverable. It has
+happened once already, in a different way: the file was moved aside during debugging in August
+2026 and 68 rules had to be merged back from the old copy.
+
+`DB_PATH` moves the database somewhere that is not a deployment target, for example the
+`/home/Data` share, which persists across deploys and restarts. It is an app setting, with no
+code change. Development moved on 2026-08-21; production has not.
 
 Do it in this order, because the application creates an empty database from
 `db/tokens_template.sqlite3` whenever the path does not exist, and would otherwise come up
