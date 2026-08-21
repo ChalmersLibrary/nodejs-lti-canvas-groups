@@ -264,7 +264,7 @@ exports.handleLaunch = (page) => async function (req, res, next) {
             log.error('[LTI] This launch arrived over http, so no session cookie can be set: the cookie is ' +
                 'Secure and express-session only sends it on https. Nothing will be remembered after this ' +
                 'request. Reach the application over https, for example through a tunnel with trustProxy=true, ' +
-                'or work without Canvas using mock-lti.json and canvasBaseUri.');
+                'or work without Canvas at all using mock-lti.json.');
         }
 
         const hasSessionToken = req.session?.token?.expires_at_utc !== undefined;

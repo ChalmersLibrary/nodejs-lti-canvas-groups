@@ -45,7 +45,11 @@ cp mock-lti.example.json mock-lti.json
 
 In `.env` set `NODE_ENV=development` and `localCanvasDeveloperToken` to a Canvas API token of your own (Canvas: Account, Settings, New Access
 Token). With both of those set, every request gets a session built from `mock-lti.json` as if that user had just launched the tool, so
-`/groups` works straight away. Point `canvasBaseUri` at the Canvas you want to talk to.
+`/groups` works straight away.
+
+Which Canvas it talks to comes from `custom_canvas_api_domain` in `mock-lti.json`, which is honoured exactly as it would be from a real
+launch. Leave `canvasBaseUri` unset unless you want to override that; it wins over the domain from the launch or the mock. The domain from a
+launch is always used as `https://<domain>`, so `canvasBaseUri` is also the only way to point at something that is not https.
 
 Those two settings also switch the session cookie to a first-party one, `SameSite=Lax` and not `Secure`, because in this mode the tool is
 opened directly in a browser rather than in an iframe. The iframe cookie cannot be stored over plain http at all, so without this the cookie
@@ -76,7 +80,7 @@ or as the "third-party cookies" error, rather than as anything about cookies. Th
 this when it happens.
 
 So either put a tunnel in front of it, or, to work on everything except the launch itself, skip
-Canvas and use `mock-lti.json` with `canvasBaseUri` as described above.
+Canvas and use `mock-lti.json` as described above.
 
 Two things to know when Canvas reaches your machine through an https tunnel:
 

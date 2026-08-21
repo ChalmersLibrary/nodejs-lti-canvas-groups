@@ -11,6 +11,6 @@
   "custom_canvas_course_id": "23456",
   "custom_canvas_enrollment_state": "active",
 
-  "_comment_api_domain": "The Canvas host the tool calls. Only used when canvasBaseUri is not set; with canvasBaseUri set, that wins.",
+  "_comment_api_domain": "The Canvas host the tool calls, honoured exactly as it would be from a real launch. Used as https://<domain>. Leave canvasBaseUri unset for this to take effect; canvasBaseUri overrides it.",
   "custom_canvas_api_domain": "chalmers.instructure.com"
 }
