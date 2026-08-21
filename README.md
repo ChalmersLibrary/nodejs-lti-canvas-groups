@@ -146,6 +146,14 @@ token, and it is read back whenever the session has nothing usable.
 
 Because of limitations with Azure file system logging we use Winston to write logs to `logs/logfiles` directory. The default is 50M logs rotated at max 10 files each.
 
+`debugLogging=true` adds the launch body and the session to the log, which is what you want when a launch misbehaves. The fields that
+identify the person are written as `<redacted>`: `lis_person_sourcedid`, which at Chalmers carries the personnummer, together with the name
+fields, the email, the login id and the avatar url. The opaque `user_id` and `custom_canvas_user_id` are kept, since they are what the tokens
+table is keyed on and a launch cannot be followed without them. Access tokens and refresh tokens are never logged at all.
+
+Note that `username` is derived by ims-lti from `lis_person_name_given`, so it is redacted as well despite the innocent-looking name. If you
+add a field to a session or a log line, check whether it belongs in `personalFields` in `lti/index.js`.
+
 
 ## Special tricks
 

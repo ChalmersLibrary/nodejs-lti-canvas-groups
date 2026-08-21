@@ -49,6 +49,40 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 /**
+ * The fields in a launch that identify the person behind it, rather than the course or the
+ * request. They are replaced in anything written to the log.
+ *
+ * lis_person_sourcedid is the one that matters most: at Chalmers it carries the personnummer,
+ * so with debug logging on it used to end up in info.log and in the Azure log stream for
+ * every user who launched the tool. The names are here for the same reason, one step down.
+ *
+ * user_id and custom_canvas_user_id are deliberately not redacted. They are opaque ids, they
+ * are what the tokens table is keyed on, and without them a log is of little use.
+ */
+const personalFields = new Set([
+    /* launch parameter names */
+    'lis_person_sourcedid',
+    'lis_person_contact_email_primary',
+    'lis_person_name_full',
+    'lis_person_name_given',
+    'lis_person_name_family',
+    'custom_canvas_user_login_id',
+    'user_image',
+    /* the same things once they are in the session. username is derived by ims-lti from
+       lis_person_name_given, falling back to the family name and then the full name, so it
+       is a name too however innocent the key looks. */
+    'fullname',
+    'email',
+    'username'
+]);
+
+/**
+ * An object as text for the log, with the personal fields above replaced. The replacer runs
+ * at every depth, so it covers a launch body and a session alike.
+ */
+const forLog = (value) => JSON.stringify(value, (key, item) => personalFields.has(key) ? '<redacted>' : item);
+
+/**
  * Session as text for debug logging, without the token data. Access tokens and refresh
  * tokens must never be written to the log; the refresh token is long lived and gives
  * full API access as the user to anyone who can read the log stream.
@@ -56,7 +90,7 @@ if (process.env.NODE_ENV === 'development') {
 const sessionForLog = (session) => {
     const { token, ...rest } = session;
 
-    return JSON.stringify({
+    return forLog({
         ...rest,
         token: token ? { token_type: token.token_type, expires_at_utc: token.expires_at_utc } : undefined
     });
@@ -217,7 +251,7 @@ exports.handleLaunch = (page) => async function (req, res, next) {
     log.info("[HandleLaunch] Target page: " + page);
 
     if (debugLogging) {
-        log.info(JSON.stringify(req.body));
+        log.info('[LTI] Launch body: ' + forLog(req.body));
     }
 
     try {
@@ -251,7 +285,7 @@ exports.handleLaunch = (page) => async function (req, res, next) {
         }
 
         if (debugLogging) {
-            log.info("[LTI] Data: " + JSON.stringify(provider.body));
+            log.info("[LTI] Data: " + forLog(provider.body));
         }
 
         /* The session cookie is Secure, because it has to be SameSite=None to be sent from
