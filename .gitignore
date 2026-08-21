@@ -5,4 +5,4 @@ db/tokens.sqlite3*
 log/logfiles/
 .env
 mock-lti.json
-test/test-tokens.sqlite3*
+test/*.sqlite3*

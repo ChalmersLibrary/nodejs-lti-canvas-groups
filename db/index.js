@@ -62,6 +62,48 @@ const get = (sql, params = []) => new Promise((resolve, reject) => {
 });
 
 /**
+ * Makes sure a unique constraint exists on the key columns of a table.
+ *
+ * Versions of this application before the db rewrite created 'tokens' without a primary
+ * key, and CREATE TABLE IF NOT EXISTS never adds one to a table that already exists. A
+ * database file that has been in place since then therefore has no unique constraint on
+ * the key columns even though the DDL below asks for one. The upserts need that
+ * constraint, and without it INSERT OR REPLACE could not replace anything either, so such
+ * a database can also hold several rows for the same key.
+ *
+ * Duplicates are dropped, keeping the row that was written last, and the constraint is
+ * created. Both steps do nothing at all on a database that already has its primary key,
+ * which is every database created from the template.
+ *
+ * The identifiers are interpolated because sqlite cannot bind them; they are literals
+ * from the two call sites below and never come from a request.
+ */
+const ensureUniqueKey = async (table, keyColumns) => {
+    for (const index of await all(`PRAGMA index_list(${table})`)) {
+        if (!index.unique) {
+            continue;
+        }
+
+        const columns = (await all(`PRAGMA index_info(${index.name})`)).map((column) => column.name);
+
+        if (columns.length === keyColumns.length && keyColumns.every((column) => columns.includes(column))) {
+            return;
+        }
+    }
+
+    const keys = keyColumns.join(', ');
+    const { changes } = await run(`DELETE FROM ${table} WHERE rowid NOT IN (SELECT max(rowid) FROM ${table} GROUP BY ${keys})`);
+
+    if (changes) {
+        log.info(`[DB] Dropped ${changes} duplicate row(s) from '${table}', left there by a version without a primary key.`);
+    }
+
+    await run(`CREATE UNIQUE INDEX IF NOT EXISTS ${table}_unique_key ON ${table} (${keys})`);
+
+    log.info(`[DB] Added the missing unique key on '${table}' (${keys}).`);
+};
+
+/**
  * Creates the tables if they are not there. Every exported function awaits this, so a
  * request that arrives before the tables exist waits for them instead of failing.
  */
@@ -71,6 +113,10 @@ const ready = (async () => {
 
     await run('CREATE TABLE IF NOT EXISTS self_signup_config (canvas_course_id INTEGER NOT NULL, group_category_id INTEGER NOT NULL, assignment_id INTEGER NOT NULL, description TEXT, min_points INTEGER NOT NULL, created_at DATETIME NOT NULL DEFAULT current_timestamp, PRIMARY KEY (canvas_course_id, group_category_id))');
     log.info("[DB] Database table 'self_signup_config' ready.");
+
+    /* For database files that predate the primary keys in the two statements above. */
+    await ensureUniqueKey('tokens', ['user_id', 'user_env']);
+    await ensureUniqueKey('self_signup_config', ['canvas_course_id', 'group_category_id']);
 
     await run('CREATE TABLE IF NOT EXISTS sessions (sid TEXT NOT NULL PRIMARY KEY, expires_at_utc TEXT NOT NULL, data TEXT NOT NULL)');
     await run('CREATE INDEX IF NOT EXISTS sessions_expires_at_utc ON sessions (expires_at_utc)');

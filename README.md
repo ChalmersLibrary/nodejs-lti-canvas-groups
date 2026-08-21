@@ -107,6 +107,15 @@ If you for some reason want to clear all sessions and authorized users, delete t
 tokens and the sessions, and the tables are created again from the template on startup.
 
 
+## Database upgrades
+
+An existing database file is used as it is; only missing tables are added, so the `sessions` table appears on the first startup after the
+upgrade and the tokens are kept. The `tokens` table was created without a primary key before commit `ceb146d`, and `CREATE TABLE IF NOT
+EXISTS` does not add one to a table that already exists, so a file that has been in place since then has no unique constraint on
+`(user_id, user_env)`. On startup the missing constraint is created, after dropping any duplicate rows for the same key and keeping the one
+written last. A database that already has its primary key is left untouched. Both cases are covered by tests in `test/`.
+
+
 ## About LTI
 
 LTI (Learning Tools Interoperability®) provides a standard mechanism for authorizing users accessing a web-based application (Tool Provider) from another web-based application (Tool Consumer, typically an LMS). It can be seen as replacing a login page which a Tool Provider may otherwise have provided and avoids the need to distribute a username and password to each user. Instead a signed launch message is received from the Tool Consumer which can be verified and then trusted. This message should contain sufficient data from which to create user accounts and relevant resources (or resource mappings) "on-the-fly". Users gain a seamless experience without the need for any pre-provisioning, involvement of any other servers (for example, identity providers), or changing of any firewalls (message is sent through the user's browser). LTI works best when the Tool Provider delegates full responsibility for authorizing users to the Tool Consumer and does not allow users to directly access their system, thereby bypassing this authorization. This means that there is no need for the two systems to be synchronized with any changes to user privileges, so there is no risk of a user being given access to resources to which they are no longer entitled.
