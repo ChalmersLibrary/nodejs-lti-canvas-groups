@@ -61,6 +61,18 @@ ims-lti says is `Invalid Signature`, which reads like a wrong shared secret. On 
 log now prints the url the signature was built over; compare that with the launch url
 configured in Canvas.
 
+The launch has to reach the application over **https**, and that is not a preference. The session
+cookie is `SameSite=None`, because nothing else is sent from inside the Canvas iframe, and browsers
+reject a `SameSite=None` cookie that is not also `Secure`. express-session will not put a `Secure`
+cookie on a connection it does not consider https, so an iframed launch over plain
+`http://localhost` stores no session at all: the launch succeeds, and then every request after it
+starts a fresh empty session. That surfaces later as an OAuth redirect to `///login/oauth2/auth`,
+or as the "third-party cookies" error, rather than as anything about cookies. The launch now logs
+this when it happens.
+
+So either put a tunnel in front of it, or, to work on everything except the launch itself, skip
+Canvas and use `mock-lti.json` with `canvasBaseUri` as described above.
+
 Two things to know when Canvas reaches your machine through an https tunnel:
 
 * Set `trustProxy=true`. Otherwise `req.protocol` is `http`, the signature is built over an

@@ -21,8 +21,8 @@ const DB = path.join(__dirname, 'launch-signature-db.sqlite3');
 const SECRET = 's3cret';
 const TUNNEL = 'tunnel.example.com';
 
-const post = (port, headers, payload) => new Promise((resolve, reject) => {
-    const request = http.request({
+const request = (port, headers, payload) => new Promise((resolve, reject) => {
+    const call = http.request({
         host: '127.0.0.1',
         port,
         path: '/launch_lti',
@@ -34,12 +34,18 @@ const post = (port, headers, payload) => new Promise((resolve, reject) => {
         }
     }, (response) => {
         response.resume();
-        response.on('end', () => resolve(response.statusCode));
+        response.on('end', () => resolve({
+            status: response.statusCode,
+            setCookie: (response.headers['set-cookie'] ?? [])[0]
+        }));
     });
 
-    request.on('error', reject);
-    request.end(payload);
+    call.on('error', reject);
+    call.end(payload);
 });
+
+const post = async (port, headers, payload) => (await request(port, headers, payload)).status;
+const postWithCookie = (port, headers, payload) => request(port, headers, payload);
 
 test('a launch signed for an https tunnel validates when trust proxy is on', async (t) => {
     for (const suffix of ['', '-shm', '-wal']) {
@@ -68,11 +74,13 @@ test('a launch signed for an https tunnel validates when trust proxy is on', asy
         await require(path.join(ROOT, 'db')).close();
     });
 
-    /* Canvas is configured with the tunnel url and signs that. */
-    const launchPayload = () => new URLSearchParams(signedLaunch(`https://${TUNNEL}/launch_lti`, SECRET, {
+    const launchPayloadFor = (url) => new URLSearchParams(signedLaunch(url, SECRET, {
         oauth_consumer_key: 'canvas',
         tool_consumer_info_product_family_code: 'canvas'
     })).toString();
+
+    /* Canvas is configured with the tunnel url and signs that. */
+    const launchPayload = () => launchPayloadFor(`https://${TUNNEL}/launch_lti`);
 
     await t.test('the tunnel passes the Host through and says the protocol was https', async () => {
         const status = await post(port, { host: TUNNEL, 'x-forwarded-proto': 'https' }, launchPayload());
@@ -90,5 +98,28 @@ test('a launch signed for an https tunnel validates when trust proxy is on', asy
         const status = await post(port, { 'x-forwarded-proto': 'https', 'x-forwarded-host': TUNNEL }, launchPayload());
 
         assert.equal(status, 401, 'the Host header, not x-forwarded-host, is what gets signed');
+    });
+
+    /* The cookie is Secure because it has to be SameSite=None for the Canvas iframe, and
+       express-session will not put a Secure cookie on a connection it does not consider
+       https. So an iframed launch cannot hold a session over plain http, whatever the cookie
+       options say, and the tunnel is not optional for working on the launch locally. */
+    await t.test('an https launch gets a session cookie, and it is Secure', async () => {
+        const { setCookie } = await postWithCookie(port, { host: TUNNEL, 'x-forwarded-proto': 'https' }, launchPayload());
+
+        assert.ok(setCookie, 'a session cookie should have been set');
+        assert.match(setCookie, /;\s*Secure/i, setCookie);
+        assert.match(setCookie, /;\s*SameSite=None/i, setCookie);
+    });
+
+    await t.test('a plain http launch gets no session cookie at all', async () => {
+        /* Signed for the http url, so the launch itself is valid and only the cookie is at issue. */
+        const { status, setCookie } = await postWithCookie(port, { host: `localhost:${port}` },
+            launchPayloadFor(`http://localhost:${port}/launch_lti`));
+
+        assert.equal(status, 302, 'the launch itself should be accepted');
+
+        assert.equal(setCookie, undefined,
+            `express-session must not send a Secure cookie over http, got: ${setCookie}`);
     });
 });

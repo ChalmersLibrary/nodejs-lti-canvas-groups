@@ -123,6 +123,11 @@ test('LTI launch, OAuth, groups view and exports', async (t) => {
     DB_PATH: testDbPath,
     PORT: String(appPort),
     NODE_ENV: 'test',
+    /* The session cookie is Secure, so the requests below have to look like https. In
+       production the Azure front end terminates https and forwards this header; here the
+       test plays that part. Without it express-session sends no cookie and nothing that
+       needs a session works. */
+    trustProxy: 'true',
     canvasBaseUri: canvasBase,
     ltiConsumerKeys: `${CONSUMER_KEY}:${CONSUMER_SECRET}`,
     oauthClientId: '10000001',
@@ -160,7 +165,11 @@ test('LTI launch, OAuth, groups view and exports', async (t) => {
     const res = await fetch(appBase + url, {
       method,
       redirect: 'manual',
-      headers: { cookie: jar.header(), ...(contentType ? { 'content-type': contentType } : {}) },
+      headers: {
+        cookie: jar.header(),
+        'x-forwarded-proto': 'https',
+        ...(contentType ? { 'content-type': contentType } : {})
+      },
       body
     });
     jar.store(res);
@@ -171,7 +180,7 @@ test('LTI launch, OAuth, groups view and exports', async (t) => {
   };
 
   /* 1. Launch */
-  const launchUrl = `http://127.0.0.1:${appPort}/launch_lti`;
+  const launchUrl = `https://127.0.0.1:${appPort}/launch_lti`;
   const launchBody = buildLaunchBody({ oauth_consumer_key: CONSUMER_KEY });
   launchBody.oauth_signature = signLaunch(launchUrl, launchBody, CONSUMER_SECRET);
 
@@ -314,7 +323,11 @@ test('LTI launch, OAuth, groups view and exports', async (t) => {
   const relaunch = await fetch(appBase + '/launch_lti', {
     method: 'POST',
     redirect: 'manual',
-    headers: { cookie: freshJar.header(), 'content-type': 'application/x-www-form-urlencoded' },
+    headers: {
+      cookie: freshJar.header(),
+      'content-type': 'application/x-www-form-urlencoded',
+      'x-forwarded-proto': 'https'
+    },
     body: new URLSearchParams(relaunchBody).toString()
   });
   freshJar.store(relaunch);
@@ -323,7 +336,10 @@ test('LTI launch, OAuth, groups view and exports', async (t) => {
     relaunch.headers.get('location') === '/loading/groups',
     `${relaunch.status} -> ${relaunch.headers.get('location')}`);
 
-  const relaunchGroups = await fetch(appBase + '/groups', { headers: { cookie: freshJar.header() }, redirect: 'manual' });
+  const relaunchGroups = await fetch(appBase + '/groups', {
+    headers: { cookie: freshJar.header(), 'x-forwarded-proto': 'https' },
+    redirect: 'manual'
+  });
   await check('and the groups page works straight away', relaunchGroups.status === 200, String(relaunchGroups.status));
 
 });

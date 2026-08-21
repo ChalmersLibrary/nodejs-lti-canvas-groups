@@ -254,6 +254,19 @@ exports.handleLaunch = (page) => async function (req, res, next) {
             log.info("[LTI] Data: " + JSON.stringify(provider.body));
         }
 
+        /* The session cookie is Secure, because it has to be SameSite=None to be sent from
+           inside the Canvas iframe at all and browsers reject SameSite=None without Secure.
+           express-session will not put a Secure cookie on a connection it does not consider
+           https, so on a plain http launch nothing is stored and every request after this one
+           starts a new empty session. That shows up much later as a missing api domain or as
+           "you must enable third-party cookies", so say it here where it happens. */
+        if (!req.secure) {
+            log.error('[LTI] This launch arrived over http, so no session cookie can be set: the cookie is ' +
+                'Secure and express-session only sends it on https. Nothing will be remembered after this ' +
+                'request. Reach the application over https, for example through a tunnel with trustProxy=true, ' +
+                'or work without Canvas using mock-lti.json and canvasBaseUri.');
+        }
+
         const hasSessionToken = req.session?.token?.expires_at_utc !== undefined;
 
         applyLaunchContext(req.session, provider);

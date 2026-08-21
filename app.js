@@ -51,7 +51,11 @@ const sessionOptions = {
     resave: false,
     saveUninitialized: false,
     rolling: true,
-    cookie: { maxAge: cookieMaxAge, sameSite: 'none' }
+    /* sameSite: 'none' is what lets the cookie be sent at all from inside the Canvas iframe,
+       and a SameSite=None cookie without Secure is rejected outright by browsers, so the two
+       belong together everywhere rather than only in production. Local development over
+       http://localhost still works, because browsers count localhost as a secure context. */
+    cookie: { maxAge: cookieMaxAge, sameSite: 'none', secure: true }
 };
 
 /* Trust the x-forwarded-* headers. Always on in production, where the Azure front end
@@ -65,7 +69,6 @@ if (process.env.trustProxy === 'true' && process.env.NODE_ENV !== "production") 
 
 if (process.env.NODE_ENV === "production") {
     app.set('trust proxy', 1);
-    sessionOptions.cookie.secure = true;
 
     /* The tool only ever runs in an iframe inside Canvas, so its cookie is a third party
        cookie. Browsers are restricting those unless they are partitioned to the embedding

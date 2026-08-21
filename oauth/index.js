@@ -27,7 +27,19 @@ exports.providerLogin = (request) => {
         throw new Error("Can't construct URI for OAuth provider login.");
     }
 
-    const thisProviderLoginUri = canvas.providerBaseUri(request) + providerLoginUri;
+    const baseUri = canvas.providerBaseUri(request);
+
+    /* providerBaseUri answers '//' when it has neither the canvasBaseUri setting nor an api
+       domain from the launch in the session. Concatenating that produces '///login/oauth2/...',
+       which is a redirect to nowhere and looks like a Canvas problem rather than a missing
+       session, so say what is actually wrong instead. */
+    if (baseUri === '//') {
+        throw new Error("No Canvas api domain: the session has no custom_canvas_api_domain from " +
+            "the LTI launch and canvasBaseUri is not set. If the launch did arrive, the session " +
+            "cookie is not coming back, which is what happens when it is rejected by the browser.");
+    }
+
+    const thisProviderLoginUri = baseUri + providerLoginUri;
 
     log.info("[OAuth] Redirecting to OAuth URI: " + thisProviderLoginUri);
 
