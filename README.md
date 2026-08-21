@@ -47,6 +47,11 @@ In `.env` set `NODE_ENV=development` and `localCanvasDeveloperToken` to a Canvas
 Token). With both of those set, every request gets a session built from `mock-lti.json` as if that user had just launched the tool, so
 `/groups` works straight away. Point `canvasBaseUri` at the Canvas you want to talk to.
 
+Those two settings also switch the session cookie to a first-party one, `SameSite=Lax` and not `Secure`, because in this mode the tool is
+opened directly in a browser rather than in an iframe. The iframe cookie cannot be stored over plain http at all, so without this the cookie
+would be dropped on every request; the mocked session is rebuilt each time so the tool would still work, but every page load would leave
+another session row behind.
+
 Fill `mock-lti.json` with values from a course you can actually see, or the API calls will come back empty. The simplest way to get real ones
 is to set `debugLogging=true`, launch the tool from Canvas once, and copy the launch body out of `log/logfiles/info.log`.
 

@@ -44,6 +44,25 @@ app.use(express.urlencoded({ extended: false }));
 /* with each other and with the page itself.                                          */
 app.use("/assets", express.static(__dirname + '/public/assets'));
 
+/* Local development against mock-lti.json, rather than a launch from Canvas. */
+const localMockSession = process.env.NODE_ENV === 'development' && Boolean(process.env.localCanvasDeveloperToken);
+
+/**
+ * The tool normally runs in an iframe inside Canvas, where only a SameSite=None cookie is
+ * sent at all, and browsers reject a SameSite=None cookie that is not also Secure. Secure
+ * in turn needs https, since express-session will not put a Secure cookie on a connection
+ * it does not consider https.
+ *
+ * Local development with mock-lti.json is the one case with neither an iframe nor https: the
+ * tool is opened directly in a browser, which is a first-party context, so a Lax cookie is
+ * both sufficient and the only kind that can be stored over http. Without this the cookie is
+ * dropped on every request, and since the mocked session is rebuilt each time it still works
+ * but writes a new session row for every page load.
+ */
+const sessionCookie = localMockSession
+    ? { maxAge: cookieMaxAge, sameSite: 'lax', secure: false }
+    : { maxAge: cookieMaxAge, sameSite: 'none', secure: true };
+
 const sessionOptions = {
     store: new SqliteSessionStore({ ttlSeconds: cookieMaxAge / 1000 }),
     name: process.env.SESSION_NAME ? process.env.SESSION_NAME : "groupTool.sid",
@@ -51,12 +70,12 @@ const sessionOptions = {
     resave: false,
     saveUninitialized: false,
     rolling: true,
-    /* sameSite: 'none' is what lets the cookie be sent at all from inside the Canvas iframe,
-       and a SameSite=None cookie without Secure is rejected outright by browsers, so the two
-       belong together everywhere rather than only in production. Local development over
-       http://localhost still works, because browsers count localhost as a secure context. */
-    cookie: { maxAge: cookieMaxAge, sameSite: 'none', secure: true }
+    cookie: sessionCookie
 };
+
+if (localMockSession) {
+    log.info('[Main] Local development with mock-lti.json: first-party session cookie (SameSite=Lax, not Secure).');
+}
 
 /* Trust the x-forwarded-* headers. Always on in production, where the Azure front end
    terminates https, and settable on its own for local development behind a tunnel: without
@@ -99,7 +118,7 @@ app.use(function (req, res, next) {
 
 // Mock local session
 app.use(function (req, res, next) {
-    if (process.env.NODE_ENV === 'development' && process.env.localCanvasDeveloperToken) {
+    if (localMockSession) {
         lti.mockLocalSession(req);
     }
 
