@@ -37,14 +37,18 @@ const secrets = new Map(
         })
 );
 
+/* The mocked launch data for local development. The path can be pointed elsewhere with
+   MOCK_LTI_PATH, so that a test never writes over the file someone is developing against. */
+const mockLtiPath = process.env.MOCK_LTI_PATH || 'mock-lti.json';
+
 let developmentLtiData;
 
 if (process.env.NODE_ENV === 'development') {
     try {
-        developmentLtiData = JSON.parse(fs.readFileSync('mock-lti.json', 'utf8'));
+        developmentLtiData = JSON.parse(fs.readFileSync(mockLtiPath, 'utf8'));
     }
     catch (error) {
-        log.error("[LTI] Reading mock-lti.json: " + error);
+        log.error(`[LTI] Reading ${mockLtiPath}: ${error}`);
     }
 }
 

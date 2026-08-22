@@ -17,16 +17,13 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const DB = path.join(__dirname, 'session-cookie-local-db.sqlite3');
-const MOCK = path.join(ROOT, 'mock-lti.json');
+/* Never the file in the project root: that is the one someone is developing against. */
+const MOCK = path.join(__dirname, 'session-cookie-local-mock-lti.json');
 
 test('local development with mock-lti.json keeps one session across requests', async (t) => {
     for (const suffix of ['', '-shm', '-wal']) {
         try { fs.unlinkSync(DB + suffix); } catch { /* not there */ }
     }
-
-    /* mock-lti.json is read from the working directory and is gitignored, so write one for
-       the test if the developer has none, and put back whatever was there afterwards. */
-    const existingMock = fs.existsSync(MOCK) ? fs.readFileSync(MOCK) : null;
 
     fs.writeFileSync(MOCK, JSON.stringify({
         context_id: 'ctx-mock',
@@ -39,15 +36,6 @@ test('local development with mock-lti.json keeps one session across requests', a
         custom_canvas_api_domain: '127.0.0.1'
     }));
 
-    t.after(() => {
-        if (existingMock) {
-            fs.writeFileSync(MOCK, existingMock);
-        }
-        else {
-            fs.unlinkSync(MOCK);
-        }
-    });
-
     const port = 3900 + (process.pid % 90);
 
     Object.assign(process.env, {
@@ -56,6 +44,7 @@ test('local development with mock-lti.json keeps one session across requests', a
         NODE_ENV: 'development',
         /* Together these two are what turns on the mocked local session. */
         localCanvasDeveloperToken: 'dev-token-abc',
+        MOCK_LTI_PATH: MOCK,
         canvasBaseUri: 'http://127.0.0.1:1',
         SESSION_SECRET: 'test-secret',
         ltiConsumerKeys: 'canvas:s3cret',
