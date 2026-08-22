@@ -12,6 +12,7 @@ const canvas = require('./canvas');
 const lti = require('./lti');
 const log = require('./log');
 const db = require('./db');
+const backup = require('./db/backup');
 const error = require('./error');
 
 const port = process.env.PORT || 3000;
@@ -570,6 +571,9 @@ app.use((err, request, response, next) => {
         statistics: appStatistics(request)
     });
 });
+
+/* Rotating copies of the database, beside it on the same persistent storage. */
+backup.start();
 
 const server = app.listen(port, () => log.info(`[Main] Application listening on port ${port}, node ${process.version}.`));
 

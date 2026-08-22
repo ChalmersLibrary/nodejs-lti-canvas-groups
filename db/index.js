@@ -333,6 +333,8 @@ module.exports = {
     ready,
     close,
     tokenFingerprint,
+    /* Where the database actually is, for the backup rotation to put its copies beside it. */
+    databasePath: dbPath,
     /* The session store builds its own queries against the same connection. */
     sql: { run, all, get },
     getAllClientsDataMocked,

@@ -408,6 +408,31 @@ filesystem, where the switch is reliable, and put that copy in place. The settin
 file header and travels with the file, which is exactly what the template relies on.
 
 
+## Backups
+
+The database is copied once a day into a `backups` directory beside it, and the last
+`dbBackupKeep` copies are kept, seven by default. `dbBackupKeep=0` turns it off. The copies are
+made with `VACUUM INTO`, so each is a single consistent file, written while the application is
+running, and `VACUUM INTO` refuses to overwrite, so a round can never damage a good copy. One
+copy per calendar day, so a restart loop cannot fill the disk.
+
+```
+/home/Data/grouptool/grouptool.sqlite
+/home/Data/grouptool/backups/grouptool-2026-08-22.sqlite
+```
+
+What this protects against is the file being deleted, overwritten or corrupted. On Azure the
+database sits on storage that survives restarts, scaling and the app being moved to other
+hardware, so losing the machine is not the risk; losing the file is, and it has happened once.
+It is not an off-site backup: the copies are on the same share as the database. If that matters,
+take the copies somewhere else as well, and treat them carefully, because they hold live refresh
+tokens.
+
+Restoring is putting a copy back at the configured path, since each one is a complete database.
+The journal mode of a copy is the default rather than WAL, and the application switches it on
+the next startup, which it logs.
+
+
 ## Database upgrades
 
 An existing database file is used as it is; only missing tables are added, so the `sessions` table appears on the first startup after the
