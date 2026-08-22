@@ -459,6 +459,41 @@ app.get('/api/config/clear-cache/:course_id', async (request, response) => {
 });
 
 /**
+ * The address Zoom will recognise for a user.
+ *
+ * Zoom matches a pre-assignment against the address the user signs in with, which comes from
+ * the identity provider and follows their login. The primary email in Canvas is not that: a
+ * student can change it to anything, a private address included, and then the address Canvas
+ * reports is one Zoom has never heard of and the pre-assignment silently skips them.
+ *
+ * The login id is the identity, so it is what this uses. Where it already carries a domain,
+ * that domain is the one the identity provider issued and is kept as it is. That is what makes
+ * roles with different domains work without having to know who is a student and who teaches:
+ * a login of `someone@staff.example.org` stays on the staff domain, and one on the student
+ * domain stays there too.
+ *
+ * zoomEmailDomain is only for logins that are a bare account name with no domain at all, which
+ * cannot be turned into an address otherwise. If there is no login id either, which happens
+ * when the account reading the API may not see logins, the primary email is all there is.
+ */
+const zoomEmailAddress = (user) => {
+    const loginId = user.login_id ?? '';
+
+    /* Already a full address from the identity provider: keep the domain it came with. */
+    if (loginId.includes('@')) {
+        return loginId;
+    }
+
+    const domain = process.env.zoomEmailDomain;
+
+    if (loginId && domain) {
+        return `${loginId}@${domain}`;
+    }
+
+    return loginId || user.email || '';
+};
+
+/**
  * Group members of one category as csv, in the two flavours that are asked for.
  */
 const csvExports = {
@@ -470,7 +505,7 @@ const csvExports = {
     zoom: {
         filename: (name) => `Zoom Breakout Rooms from Canvas ${name}.csv`,
         header: "Pre-assign Room Name,Email Address\r\n",
-        row: (group, user) => `${group.name},${user.email.includes("student.chalmers") ? user.login_id.split("@")[0] + "@student.chalmers.se" : user.login_id}\r\n`
+        row: (group, user) => `${group.name},${zoomEmailAddress(user)}\r\n`
     }
 };
 

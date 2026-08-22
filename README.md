@@ -14,8 +14,10 @@ What it does:
 * **Lists every group set in the course**, one table per set, with group, student name and email address.
 * **Exports a group set as CSV** for Excel: semicolon separated with a UTF-8 byte order mark, so Excel opens it directly instead of running
   the import wizard.
-* **Exports a group set as a Zoom CSV** for pre-assigned breakout rooms, room name and email address. Note that the address mapping in this
-  export is site specific; see `csvExports.zoom` in `app.js` if your addresses do not match.
+* **Exports a group set as a Zoom CSV** for pre-assigned breakout rooms, room name and email address. The address comes from the user's login
+  rather than from their Canvas email, because Zoom matches on the address they sign in with and a student may have set their Canvas email to
+  something else entirely. A login that already carries a domain keeps it, so teachers and students on different domains both come out right;
+  `zoomEmailDomain` fills in for logins that are a bare account name.
 * **Ties self signup to an assignment.** For a group set with self signup enabled, a rule can require a submission on a chosen assignment,
   graded at or above a chosen number of points, before a student may join a group. The tool answers for one student at
   `/api/self-signup/:course_id/:user_id`, and custom javascript in Canvas calls that to hide the Join button. The rule carries a description
