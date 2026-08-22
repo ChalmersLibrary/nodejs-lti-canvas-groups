@@ -324,14 +324,24 @@ app.get('/groups', requireCourse, async (request, response, next) => {
 app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
     const { course_id: courseId, user_id: userId } = request.params;
 
+    /* This endpoint is called by a student's browser, so unlike every other route it has no
+       LTI launch behind it and no session to read custom_canvas_api_domain from. The Canvas
+       to ask therefore has to be configured, as selfSignupApiDomain, and is handed to the
+       canvas module the same way a launch would have: as the domain on a session. Reading it
+       from a request header instead would let a caller choose where systemApiToken is sent.
+
+       canvasBaseUri still wins if it is set, which is the arrangement this endpoint has
+       always relied on. */
+    const canvasRequest = { session: { canvasApiDomain: process.env.selfSignupApiDomain } };
+
     try {
         const assignments = await db.getSelfSignupConnectedAssignments(courseId);
         const groupData = [];
 
         for (const assignment of assignments) {
             const [groups, userSubmission] = await Promise.all([
-                canvas.getCategoryGroups(assignment.group_category_id, request, process.env.systemApiToken),
-                canvas.getAssignmentGrade(courseId, assignment.assignment_id, userId, request, process.env.systemApiToken)
+                canvas.getCategoryGroups(assignment.group_category_id, canvasRequest, process.env.systemApiToken),
+                canvas.getAssignmentGrade(courseId, assignment.assignment_id, userId, canvasRequest, process.env.systemApiToken)
             ]);
 
             for (const group of groups) {

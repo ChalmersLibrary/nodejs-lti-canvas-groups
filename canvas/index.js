@@ -118,7 +118,12 @@ exports.providerBaseUri = (request) => {
   }
 
   if (request?.session?.canvasApiDomain) {
-    return 'https://' + request.session.canvasApiDomain;
+    const domain = request.session.canvasApiDomain;
+
+    /* A launch always reports a bare domain. A scheme is tolerated because the anonymous
+       self signup endpoint builds a stand-in session from selfSignupApiDomain, and that can
+       be pointed at a plain http host when testing. */
+    return domain.includes('://') ? domain : 'https://' + domain;
   }
 
   return '//';
@@ -130,7 +135,17 @@ exports.providerBaseUri = (request) => {
 exports.apiPath = (request) => {
   const baseUri = exports.providerBaseUri(request);
 
-  return baseUri == '//' ? canvasApiPath : baseUri + canvasApiPath;
+  /* Returning the bare path here used to send axios a relative url, which it rejects with
+     "TypeError: Invalid URL", a message that says nothing about the missing api domain. The
+     case that reaches this is a request with no session: the anonymous self signup endpoint
+     is called by a student's browser, so it has no launch to read a domain from and depends
+     on canvasBaseUri or on a domain passed in for it. */
+  if (baseUri === '//') {
+    throw new Error('No Canvas api domain: this request has no LTI session to read ' +
+      'custom_canvas_api_domain from, and canvasBaseUri is not set.');
+  }
+
+  return baseUri + canvasApiPath;
 };
 
 /**

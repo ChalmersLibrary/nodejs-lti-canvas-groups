@@ -166,8 +166,13 @@ The view `loading` is a proxy web page for displaying a progress bar until next 
 ### The self signup endpoint
 
 `GET /api/self-signup/:course_id/:user_id` answers whether one student has met the self signup rules configured for a course. It takes the
-numeric Canvas course id and the numeric Canvas user id, and it needs `systemApiToken` to be set, since it reads submissions with no user
-session of its own.
+numeric Canvas course id and the numeric Canvas user id.
+
+It needs two settings, because it runs without a launch behind it. `systemApiToken`, since it reads submissions with no user session to
+borrow a token from, and `selfSignupApiDomain`, since there is no `custom_canvas_api_domain` to tell it which Canvas to ask. `canvasBaseUri`
+serves the same purpose where it is set. Without either the endpoint answers `{"success": false, "groups": []}` and logs that it has no api
+domain. The host is not read from a request header on purpose: the endpoint calls Canvas with `systemApiToken`, and a caller able to choose
+the host could choose where that token goes.
 
 There is **no authentication on this endpoint**. It is meant to be called from javascript running in the student's own browser, which has no
 credentials to offer.
