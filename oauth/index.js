@@ -6,24 +6,50 @@ const canvas = require('../canvas');
 const log = require('../log');
 const db = require('../db');
 
-const clientRedirectUri = (process.env.WEBSITE_HOSTNAME == "localhost" ? "http://localhost:3000" : "https://" + process.env.WEBSITE_HOSTNAME) + "/oauth/redirect";
 const clientId = process.env.oauthClientId ? process.env.oauthClientId : "";
 const clientSecret = process.env.oauthClientSecret ? process.env.oauthClientSecret : "";
 const clientState = process.env.oauthClientState ? process.env.oauthClientState : (process.env.COMPUTERNAME ? process.env.COMPUTERNAME : "C2D7938F027A5FD7A7076CA7");
-const providerLoginUri = "/login/oauth2/auth?client_id=" + clientId + "&response_type=code&state=" + clientState + "&redirect_uri=" + clientRedirectUri;
+
+/* A host is a name and an optional port and nothing else. The value comes from a request
+   header and goes into the query string Canvas sends the user back through, so a stray
+   '&' or '/' in it would add parameters or change where the user lands. */
+const hostPattern = /^[a-z0-9.-]+(:[0-9]+)?$/i;
+
+/* The tool answers on more than one hostname, and which one a user is on is decided by the
+   placement they launched from. Building the redirect uri from the host the request arrived
+   on brings the authorization back to the hostname it left from, so the token is written
+   into the session the launch created.
+
+   One configured value cannot name two hostnames, and getting it wrong is not a visible
+   failure: the launch session sits under one host's cookie and the user object under the
+   other's, so anyone needing authorization meets the third-party cookie error while everyone
+   already holding a token carries on unaffected.
+
+   Every hostname the tool answers on has to be registered as a redirect uri on the Canvas
+   developer key. The setting stays as the fallback for a call that carries no usable host. */
+const configuredRedirectUri = (process.env.WEBSITE_HOSTNAME == "localhost" ? "http://localhost:3000" : "https://" + process.env.WEBSITE_HOSTNAME) + "/oauth/redirect";
+
+const clientRedirectUri = (request) => {
+    const host = request.get ? request.get('host') : undefined;
+
+    if (!host || !hostPattern.test(host)) {
+        return configuredRedirectUri;
+    }
+
+    return request.protocol + "://" + host + "/oauth/redirect";
+};
 
 if (process.env.NODE_ENV == "development") {
-    log.info("[OAuth] clientRedirectUri " + clientRedirectUri);
+    log.info("[OAuth] configuredRedirectUri " + configuredRedirectUri + ", used when a request carries no host");
     log.info("[OAuth] clientId " + clientId);
     log.info("[OAuth] clientState " + clientState);
-    log.info("[OAuth] providerLoginUri " + providerLoginUri);
 }
 
 /**
  * Returns the correct OAuth login uri.
  */
 exports.providerLogin = (request) => {
-    if (!providerLoginUri || !request) {
+    if (!request) {
         throw new Error("Can't construct URI for OAuth provider login.");
     }
 
@@ -39,7 +65,9 @@ exports.providerLogin = (request) => {
             "cookie is not coming back, which is what happens when it is rejected by the browser.");
     }
 
-    const thisProviderLoginUri = baseUri + providerLoginUri;
+    const thisProviderLoginUri = baseUri + "/login/oauth2/auth?client_id=" + clientId +
+        "&response_type=code&state=" + clientState +
+        "&redirect_uri=" + clientRedirectUri(request);
 
     log.info("[OAuth] Redirecting to OAuth URI: " + thisProviderLoginUri);
 
