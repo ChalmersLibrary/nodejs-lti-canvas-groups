@@ -16,7 +16,13 @@ process.env.DB_PATH = path.join(__dirname, 'oauth-login-uri-db.sqlite3');
 process.env.oauthClientId = '10000001';
 process.env.oauthClientState = 'teststate';
 process.env.WEBSITE_HOSTNAME = 'localhost';
-delete process.env.canvasBaseUri;
+
+/* Empty rather than deleted. The modules under test call dotenv at require time, which is
+   after this line, and dotenv fills in any key that is absent from process.env -- so a
+   developer with canvasBaseUri in their own .env got it back and this file tested their
+   configuration instead of the one it sets up. An empty value is present, so dotenv leaves
+   it alone, and it is falsy, so the code reads it as unset. */
+process.env.canvasBaseUri = '';
 
 const oauth = require(path.join(ROOT, 'oauth'));
 const db = require(path.join(ROOT, 'db'));
@@ -54,7 +60,7 @@ test('canvasBaseUri overrides the launch, for local development', () => {
         assert.match(uri, /^https:\/\/chalmers\.test\.instructure\.com\/login\/oauth2\/auth\?/);
     }
     finally {
-        delete process.env.canvasBaseUri;
+        process.env.canvasBaseUri = '';
     }
 });
 
