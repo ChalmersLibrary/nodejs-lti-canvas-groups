@@ -16,7 +16,6 @@
       <lticm:property name="tool_id">nodejs-lti-canvas-groups</lticm:property>
       <lticm:property name="privacy_level">public</lticm:property>
       <lticm:options name="course_navigation">
-        <lticm:property name="url">https://SERVER/launch_lti</lticm:property>
         <lticm:property name="text">Group Tool</lticm:property>
         <lticm:property name="visibility">admins</lticm:property>
         <lticm:property name="default">enabled</lticm:property>
