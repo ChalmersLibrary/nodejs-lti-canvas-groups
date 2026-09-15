@@ -2,6 +2,9 @@ node_modules/
 sessions/
 db/token.db
 db/tokens.sqlite3*
+# The rotating copies land beside the database, so a local run puts them here, and a copy of
+# the database holds every refresh token in it.
+db/backups/
 log/logfiles/
 .env
 mock-lti.json

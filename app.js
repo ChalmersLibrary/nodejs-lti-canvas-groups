@@ -320,6 +320,39 @@ app.get('/groups', requireCourse, async (request, response, next) => {
 });
 
 /**
+ * The token the public self signup endpoint calls Canvas with: the scoped credential where it is
+ * configured, systemApiToken where it is not. The scoped one can call only the two urls that
+ * endpoint uses; systemApiToken carries the whole authority of whoever generated it, which is why
+ * it is the fallback rather than the arrangement.
+ *
+ * A scoped credential that is configured but broken falls back too, loudly. The consumer of that
+ * endpoint leaves every Join button alone when the answer is unsuccessful, so a failure here shows
+ * up nowhere: it silently stops the rules being enforced. Serving with the wider token beats that,
+ * for as long as there is one to serve with.
+ */
+const selfSignupAccessToken = async (canvasRequest) => {
+    if (!selfSignupToken.isConfigured()) {
+        return process.env.systemApiToken;
+    }
+
+    try {
+        return await selfSignupToken.accessToken(canvasRequest);
+    }
+    catch (error) {
+        log.error(`[SelfSignupPublicApi] The scoped credential failed: ${error.message}`);
+
+        if (!process.env.systemApiToken) {
+            throw error;
+        }
+
+        log.error('[SelfSignupPublicApi] Falling back to systemApiToken, which is wider than this ' +
+            'endpoint needs. Fix the scoped credential.');
+
+        return process.env.systemApiToken;
+    }
+};
+
+/**
  * Public API used by Canvas injected custom js to get information on self signup
  * and submissions to configured assignment for a specific user.
  */
@@ -340,31 +373,11 @@ app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
         const assignments = await db.getSelfSignupConnectedAssignments(courseId);
         const groupData = [];
 
-        /* The scoped credential where it is configured, systemApiToken where it is not. The
-           scoped one can call only the two urls below; systemApiToken carries the whole authority
-           of whoever generated it, which is why it is the fallback rather than the arrangement.
-
-           A scoped credential that is configured but broken falls back too, loudly. The consumer
-           of this endpoint leaves every Join button alone when the answer is unsuccessful, so
-           failing here does not show an error anywhere: it silently stops the rules being
-           enforced. Serving with the wider token beats that, for as long as there is one. */
-        let accessToken = process.env.systemApiToken;
-
-        if (selfSignupToken.isConfigured()) {
-            try {
-                accessToken = await selfSignupToken.accessToken(canvasRequest);
-            }
-            catch (error) {
-                log.error(`[SelfSignupPublicApi] The scoped credential failed: ${error.message}`);
-
-                if (!accessToken) {
-                    throw error;
-                }
-
-                log.error('[SelfSignupPublicApi] Falling back to systemApiToken, which is wider ' +
-                    'than this endpoint needs. Fix the scoped credential.');
-            }
-        }
+        /* Only a course with a rule configured talks to Canvas, so only one needs a credential.
+           Most courses have no rule and this endpoint is called from every student's group page,
+           so acquiring a token first would spend a refresh on courses that never use it -- and
+           would fail a course that has nothing to look up, whenever the credential is broken. */
+        const accessToken = assignments.length ? await selfSignupAccessToken(canvasRequest) : null;
 
         for (const assignment of assignments) {
             const [groups, userSubmission] = await Promise.all([

@@ -142,4 +142,39 @@ test('the anonymous self signup endpoint', async (t) => {
 
         assert.deepEqual(body, { success: true, groups: [] });
     });
+
+    await t.test('and asks Canvas nothing at all, not even for a token', async () => {
+        /* A course with no rule has nothing to look up, so it must answer without a credential.
+           Acquiring the token before checking cost a refresh on every course that has no rule,
+           and turned a broken credential into a failure for courses that did not need one. The
+           stub has no token endpoint, so a refresh attempt both shows up in apiCalls and fails,
+           which is what makes this case tell the two versions apart. */
+        apiCalls = [];
+        const saved = {
+            systemApiToken: process.env.systemApiToken,
+            clientId: process.env.selfSignupOauthClientId
+        };
+
+        Object.assign(process.env, {
+            systemApiToken: '',
+            selfSignupOauthClientId: '10000002',
+            selfSignupOauthClientSecret: 'scoped-secret',
+            selfSignupRefreshToken: 'scoped-refresh'
+        });
+
+        try {
+            const body = await call(99999, STUDENT);
+
+            assert.deepEqual(body, { success: true, groups: [] }, JSON.stringify(body));
+            assert.equal(apiCalls.length, 0, `expected no call to Canvas, got: ${apiCalls.join(', ')}`);
+        }
+        finally {
+            Object.assign(process.env, {
+                systemApiToken: saved.systemApiToken,
+                selfSignupOauthClientId: saved.clientId,
+                selfSignupOauthClientSecret: '',
+                selfSignupRefreshToken: ''
+            });
+        }
+    });
 });
