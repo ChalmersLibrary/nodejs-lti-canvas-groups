@@ -60,7 +60,7 @@ $ npm test
 http://localhost:3000
 ```
 
-## Local development without Canvas
+## Local development without a launch from Canvas
 
 The tool normally gets everything it knows from an LTI launch, which needs Canvas. To work on it without that, copy the two example files
 and set two variables:
