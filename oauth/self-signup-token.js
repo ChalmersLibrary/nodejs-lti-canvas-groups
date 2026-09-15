@@ -106,5 +106,31 @@ exports.accessToken = async (request) => {
     return refreshing;
 };
 
+/**
+ * A replacement for an access token Canvas has just rejected.
+ *
+ * A grant holds one access token, and a refresh regenerates it: anything else configured with
+ * this same credential refreshing leaves the token held here a string Canvas no longer knows,
+ * most of its hour still to run. A rejection therefore does not mean the credential is broken,
+ * and one refresh puts it right.
+ *
+ * When the cache holds something other than the rejected token, another caller has already
+ * replaced it, so that one is handed out instead and a burst of rejections costs one exchange
+ * rather than one each.
+ */
+exports.accessTokenAfterRejection = async (request, rejectedToken) => {
+    if (!exports.isConfigured()) {
+        return null;
+    }
+
+    if (cached && cached.accessToken !== rejectedToken) {
+        return cached.accessToken;
+    }
+
+    cached = null;
+
+    return exports.accessToken(request);
+};
+
 /* Tests run several cases in one process, and the cache would carry between them. */
 exports.forget = () => { cached = null; refreshing = null; };

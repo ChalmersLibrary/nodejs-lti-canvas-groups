@@ -329,14 +329,17 @@ app.get('/groups', requireCourse, async (request, response, next) => {
  * endpoint leaves every Join button alone when the answer is unsuccessful, so a failure here shows
  * up nowhere: it silently stops the rules being enforced. Serving with the wider token beats that,
  * for as long as there is one to serve with.
+ *
+ * Which credential answered is part of the result, since only the scoped one can be replaced when
+ * Canvas rejects it.
  */
-const selfSignupAccessToken = async (canvasRequest) => {
+const selfSignupCredential = async (canvasRequest) => {
     if (!selfSignupToken.isConfigured()) {
-        return process.env.systemApiToken;
+        return { accessToken: process.env.systemApiToken, scoped: false };
     }
 
     try {
-        return await selfSignupToken.accessToken(canvasRequest);
+        return { accessToken: await selfSignupToken.accessToken(canvasRequest), scoped: true };
     }
     catch (error) {
         log.error(`[SelfSignupPublicApi] The scoped credential failed: ${error.message}`);
@@ -348,8 +351,34 @@ const selfSignupAccessToken = async (canvasRequest) => {
         log.error('[SelfSignupPublicApi] Falling back to systemApiToken, which is wider than this ' +
             'endpoint needs. Fix the scoped credential.');
 
-        return process.env.systemApiToken;
+        return { accessToken: process.env.systemApiToken, scoped: false };
     }
+};
+
+/**
+ * The groups every rule in a course contributes, each with whether the user has passed the
+ * assignment that rule names.
+ */
+const selfSignupGroups = async (assignments, courseId, userId, canvasRequest, accessToken) => {
+    const groupData = [];
+
+    for (const assignment of assignments) {
+        const [groups, userSubmission] = await Promise.all([
+            canvas.getCategoryGroups(assignment.group_category_id, canvasRequest, accessToken),
+            canvas.getAssignmentGrade(courseId, assignment.assignment_id, userId, canvasRequest, accessToken)
+        ]);
+
+        for (const group of groups) {
+            groupData.push({
+                id: group.id,
+                name: group.name,
+                passed: userSubmission.score >= assignment.min_points,
+                description: assignment.description
+            });
+        }
+    }
+
+    return groupData;
 };
 
 /**
@@ -371,28 +400,38 @@ app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
 
     try {
         const assignments = await db.getSelfSignupConnectedAssignments(courseId);
-        const groupData = [];
 
         /* Only a course with a rule configured talks to Canvas, so only one needs a credential.
            Most courses have no rule and this endpoint is called from every student's group page,
            so acquiring a token first would spend a refresh on courses that never use it -- and
            would fail a course that has nothing to look up, whenever the credential is broken. */
-        const accessToken = assignments.length ? await selfSignupAccessToken(canvasRequest) : null;
+        const credential = assignments.length
+            ? await selfSignupCredential(canvasRequest)
+            : { accessToken: null, scoped: false };
 
-        for (const assignment of assignments) {
-            const [groups, userSubmission] = await Promise.all([
-                canvas.getCategoryGroups(assignment.group_category_id, canvasRequest, accessToken),
-                canvas.getAssignmentGrade(courseId, assignment.assignment_id, userId, canvasRequest, accessToken)
-            ]);
+        let groupData;
 
-            for (const group of groups) {
-                groupData.push({
-                    id: group.id,
-                    name: group.name,
-                    passed: userSubmission.score >= assignment.min_points,
-                    description: assignment.description
-                });
+        try {
+            groupData = await selfSignupGroups(assignments, courseId, userId, canvasRequest, credential.accessToken);
+        }
+        catch (error) {
+            /* A grant holds one access token and a refresh regenerates it, so another instance
+               configured with the same credential refreshing leaves this one holding a token
+               Canvas no longer knows, an hour before it would have expired. It arrives as a 401
+               and one refresh puts it right, which is the difference between a request that
+               recovers and an hour of the rules not being enforced. A 401 on systemApiToken is
+               a permission the account does not have, and no refresh helps that. */
+            if (!credential.scoped || error.response?.status !== 401) {
+                throw error;
             }
+
+            log.error('[SelfSignupPublicApi] Canvas rejected the scoped access token. Refreshing ' +
+                'once and retrying. Seeing this regularly means another instance shares this ' +
+                'credential, and each of them needs its own.');
+
+            const replacement = await selfSignupToken.accessTokenAfterRejection(canvasRequest, credential.accessToken);
+
+            groupData = await selfSignupGroups(assignments, courseId, userId, canvasRequest, replacement);
         }
 
         log.info(`[SelfSignupPublicApi] Course id ${courseId} user id ${userId} returned ${groupData.length} group(s).`);

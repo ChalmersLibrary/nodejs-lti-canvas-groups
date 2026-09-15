@@ -152,6 +152,48 @@ test('the scoped self signup credential', async (t) => {
         assert.equal(recovered, 'scoped-token-1', 'it should recover once Canvas answers again');
     });
 
+    await t.test('a rejected token is replaced, since a grant Canvas has regenerated looks like this', async () => {
+        reset();
+
+        const first = await token.accessToken(request);
+
+        /* Nothing is expired here: the token has its whole hour left and Canvas still refuses
+           it, which is what another instance refreshing the same grant does to this one. */
+        const replacement = await token.accessTokenAfterRejection(request, first);
+
+        assert.equal(replacement, 'scoped-token-2', 'the rejected token must not be handed back');
+        assert.equal(refreshCalls.length, 2);
+    });
+
+    await t.test('and a second caller rejected at the same moment gets that replacement, not another', async () => {
+        reset();
+
+        const first = await token.accessToken(request);
+        const [a, b] = await Promise.all([
+            token.accessTokenAfterRejection(request, first),
+            token.accessTokenAfterRejection(request, first)
+        ]);
+
+        assert.equal(a, 'scoped-token-2');
+        assert.equal(b, 'scoped-token-2');
+        assert.equal(refreshCalls.length, 2, 'both rejections should share one exchange');
+    });
+
+    await t.test('a caller still holding the token that was already replaced does not refresh again', async () => {
+        reset();
+
+        const first = await token.accessToken(request);
+
+        await token.accessTokenAfterRejection(request, first);
+
+        /* This caller's request was in flight while the replacement happened, so it reports a
+           rejection of a token that is two generations old. There is nothing left to fix. */
+        const value = await token.accessTokenAfterRejection(request, first);
+
+        assert.equal(value, 'scoped-token-2');
+        assert.equal(refreshCalls.length, 2, 'a stale rejection must not cost an exchange');
+    });
+
     await t.test('with nothing configured it returns null, which is the signal to fall back', async () => {
         reset();
 

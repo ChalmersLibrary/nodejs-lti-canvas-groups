@@ -27,18 +27,51 @@ const OTHER_COURSE = 40000;
 const OTHER_CATEGORY = 40001;
 const OTHER_ASSIGNMENT = 40002;
 
+/* Two more sets, for the rejected token case. It needs a request that succeeds and then one
+   that reaches Canvas rather than a cache, and those cannot share a course: the group list is
+   held for fifteen minutes and the submissions for thirty seconds, so the second request would
+   be answered without a token at all. */
+const PRIME_COURSE = 50000;
+const PRIME_CATEGORY = 50001;
+const PRIME_ASSIGNMENT = 50002;
+const STALE_COURSE = 50010;
+const STALE_CATEGORY = 50011;
+const STALE_ASSIGNMENT = 50012;
+
+const CATEGORIES = [CATEGORY, OTHER_CATEGORY, PRIME_CATEGORY, STALE_CATEGORY];
+
 let apiCalls = [];
+
+/* The stub keeps one access token per grant and regenerates it on a refresh, which is what
+   Canvas does and the whole reason the retry exists: the token issued before stops working. */
+let issuedTokens = 0;
+let liveToken = null;
 
 const canvasServer = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
-    apiCalls.push(url.pathname);
 
-    const send = (body) => {
-        res.writeHead(200, { 'content-type': 'application/json' });
+    const send = (body, status = 200) => {
+        res.writeHead(status, { 'content-type': 'application/json' });
         res.end(JSON.stringify(body));
     };
 
-    if (new RegExp(`/group_categories/(${CATEGORY}|${OTHER_CATEGORY})/groups$`).test(url.pathname)) {
+    if (url.pathname === '/login/oauth2/token') {
+        req.resume();
+        issuedTokens += 1;
+        liveToken = `scoped-token-${issuedTokens}`;
+
+        return send({ access_token: liveToken, expires_in: 3600 });
+    }
+
+    apiCalls.push(url.pathname);
+
+    const bearer = (req.headers.authorization ?? '').replace(/^Bearer /, '');
+
+    if (bearer.startsWith('scoped-token-') && bearer !== liveToken) {
+        return send({ errors: [{ message: 'Invalid access token.' }] }, 401);
+    }
+
+    if (new RegExp(`/group_categories/(${CATEGORIES.join('|')})/groups$`).test(url.pathname)) {
         return send([{ id: 228462, name: 'Group 1', group_category_id: CATEGORY }]);
     }
     if (/\/submissions$/.test(url.pathname)) {
@@ -190,6 +223,63 @@ test('the anonymous self signup endpoint', async (t) => {
                 selfSignupOauthClientSecret: '',
                 selfSignupRefreshToken: ''
             });
+        }
+    });
+
+    await t.test('a token another instance has invalidated is refreshed and the request retried', async () => {
+        /* A grant holds one access token, so a second instance configured with the same
+           credential takes this one's token away every time it refreshes. Without the retry the
+           endpoint then fails for the rest of the hour, and it fails open: every Join button
+           stays enabled and nothing on the page says so. */
+        const saved = {
+            systemApiToken: process.env.systemApiToken,
+            clientId: process.env.selfSignupOauthClientId
+        };
+
+        Object.assign(process.env, {
+            /* Nothing to fall back to, so the retry is the only thing that can serve this. */
+            systemApiToken: '',
+            selfSignupOauthClientId: '10000002',
+            selfSignupOauthClientSecret: 'scoped-secret',
+            selfSignupRefreshToken: 'scoped-refresh'
+        });
+
+        const token = require(path.join(ROOT, 'oauth', 'self-signup-token'));
+
+        token.forget();
+
+        try {
+            await db.setSelfSignupConfig(PRIME_COURSE, PRIME_CATEGORY, PRIME_ASSIGNMENT, 'Prime.', 5);
+            await db.setSelfSignupConfig(STALE_COURSE, STALE_CATEGORY, STALE_ASSIGNMENT, 'Stale.', 5);
+
+            const primed = await call(PRIME_COURSE, STUDENT);
+
+            assert.equal(primed.success, true, JSON.stringify(primed));
+            assert.equal(issuedTokens, 1, 'the endpoint should have fetched a token of its own');
+
+            /* The other instance refreshes. Nothing tells this process, which goes on holding a
+               token with its whole hour left that Canvas has stopped recognising. */
+            await fetch(`${canvasBase}/login/oauth2/token`, { method: 'POST' });
+
+            assert.equal(issuedTokens, 2);
+
+            const response = await fetchCall(STALE_COURSE, STUDENT);
+            const body = await response.json();
+
+            assert.equal(response.status, 200, `the rejection should be recovered from: ${JSON.stringify(body)}`);
+            assert.equal(body.groups.length, 1, JSON.stringify(body));
+            assert.equal(body.groups[0].passed, true, 'and the retry serves the real answer, not an empty one');
+            assert.equal(issuedTokens, 3, 'exactly one refresh in answer to the rejection');
+        }
+        finally {
+            Object.assign(process.env, {
+                systemApiToken: saved.systemApiToken,
+                selfSignupOauthClientId: saved.clientId,
+                selfSignupOauthClientSecret: '',
+                selfSignupRefreshToken: ''
+            });
+
+            token.forget();
         }
     });
 });
