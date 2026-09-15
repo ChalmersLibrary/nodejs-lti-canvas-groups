@@ -63,7 +63,13 @@ test('the anonymous self signup endpoint', async (t) => {
         systemApiToken: 'system-token',
         /* The setting under test. canvasBaseUri is deliberately NOT set, which is what
            exposed the missing domain in the first place. */
-        selfSignupApiDomain: canvasBase
+        selfSignupApiDomain: canvasBase,
+        /* Empty, not absent: this file is about the systemApiToken path, and a developer whose
+           own .env holds a scoped credential would otherwise have dotenv hand it over and send
+           the refresh at the stub below. The scoped path has its own file. */
+        selfSignupOauthClientId: '',
+        selfSignupOauthClientSecret: '',
+        selfSignupRefreshToken: ''
     });
 
     /* Empty rather than deleted. app.js calls dotenv at require time, which is after this line,

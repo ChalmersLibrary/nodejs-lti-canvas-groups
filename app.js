@@ -8,6 +8,7 @@ const cors = require('cors');
 const pkg = require('./package.json');
 const SqliteSessionStore = require('./session-store');
 const oauth = require('./oauth');
+const selfSignupToken = require('./oauth/self-signup-token');
 const canvas = require('./canvas');
 const lti = require('./lti');
 const log = require('./log');
@@ -339,10 +340,36 @@ app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
         const assignments = await db.getSelfSignupConnectedAssignments(courseId);
         const groupData = [];
 
+        /* The scoped credential where it is configured, systemApiToken where it is not. The
+           scoped one can call only the two urls below; systemApiToken carries the whole authority
+           of whoever generated it, which is why it is the fallback rather than the arrangement.
+
+           A scoped credential that is configured but broken falls back too, loudly. The consumer
+           of this endpoint leaves every Join button alone when the answer is unsuccessful, so
+           failing here does not show an error anywhere: it silently stops the rules being
+           enforced. Serving with the wider token beats that, for as long as there is one. */
+        let accessToken = process.env.systemApiToken;
+
+        if (selfSignupToken.isConfigured()) {
+            try {
+                accessToken = await selfSignupToken.accessToken(canvasRequest);
+            }
+            catch (error) {
+                log.error(`[SelfSignupPublicApi] The scoped credential failed: ${error.message}`);
+
+                if (!accessToken) {
+                    throw error;
+                }
+
+                log.error('[SelfSignupPublicApi] Falling back to systemApiToken, which is wider ' +
+                    'than this endpoint needs. Fix the scoped credential.');
+            }
+        }
+
         for (const assignment of assignments) {
             const [groups, userSubmission] = await Promise.all([
-                canvas.getCategoryGroups(assignment.group_category_id, canvasRequest, process.env.systemApiToken),
-                canvas.getAssignmentGrade(courseId, assignment.assignment_id, userId, canvasRequest, process.env.systemApiToken)
+                canvas.getCategoryGroups(assignment.group_category_id, canvasRequest, accessToken),
+                canvas.getAssignmentGrade(courseId, assignment.assignment_id, userId, canvasRequest, accessToken)
             ]);
 
             for (const group of groups) {
