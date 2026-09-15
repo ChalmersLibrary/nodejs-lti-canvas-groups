@@ -93,7 +93,8 @@ test('the anonymous self signup endpoint', async (t) => {
     await db.setSelfSignupConfig(COURSE, CATEGORY, ASSIGNMENT, 'Pass the quiz first.', 5);
     await db.setSelfSignupConfig(OTHER_COURSE, OTHER_CATEGORY, OTHER_ASSIGNMENT, 'Other rule.', 5);
 
-    const call = (course, user) => fetch(`http://127.0.0.1:${port}/api/self-signup/${course}/${user}`).then((r) => r.json());
+    const fetchCall = (course, user) => fetch(`http://127.0.0.1:${port}/api/self-signup/${course}/${user}`);
+    const call = (course, user) => fetchCall(course, user).then((r) => r.json());
 
     await t.test('answers with no session and no cookie at all', async () => {
         apiCalls = [];
@@ -127,14 +128,28 @@ test('the anonymous self signup endpoint', async (t) => {
         delete process.env.selfSignupApiDomain;
 
         try {
-            const body = await call(OTHER_COURSE, STUDENT);
+            const response = await fetchCall(OTHER_COURSE, STUDENT);
+            const body = await response.json();
 
             /* The route catches, logs and answers; it must not throw out of the handler. */
             assert.deepEqual(body, { success: false, groups: [] }, JSON.stringify(body));
+
+            /* And it says so in the status, which is the only part a monitor can read. The body
+               stays as it was so that the consumer behaves identically. */
+            assert.equal(response.status, 503, 'a failure must not be served as 200');
         }
         finally {
             process.env.selfSignupApiDomain = canvasBase;
         }
+    });
+
+    await t.test('an answer with nothing to block is still a 200, not a failure', async () => {
+        /* The distinction a monitor needs: no rule configured is a correct answer, and only the
+           error path is a 5xx. Conflating them would make every unconfigured course an alert. */
+        const response = await fetchCall(99999, STUDENT);
+
+        assert.equal(response.status, 200);
+        assert.deepEqual(await response.json(), { success: true, groups: [] });
     });
 
     await t.test('a course with no rule configured answers with nothing to block', async () => {

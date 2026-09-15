@@ -402,7 +402,11 @@ app.get('/api/self-signup/:course_id/:user_id', async (request, response) => {
     catch (err) {
         log.error(`[SelfSignupPublicApi] Course id ${courseId} user id ${userId}: ${err}`);
 
-        return response.json({ success: false, groups: [] });
+        /* 503 rather than 200, with the body unchanged. The consumer is unaffected: fetch does
+           not reject on a 5xx, so it parses this the way it always has, finds no rule and leaves
+           every Join button alone. What changes is that a monitor can tell a failure from an
+           answer, which it could not while every outcome was a 200. */
+        return response.status(503).json({ success: false, groups: [] });
     }
 });
 
