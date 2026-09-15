@@ -69,7 +69,13 @@ test('the anonymous self signup endpoint', async (t) => {
            exposed the missing domain in the first place. */
         selfSignupApiDomain: canvasBase
     });
-    delete process.env.canvasBaseUri;
+
+    /* Empty rather than deleted. app.js calls dotenv at require time, which is after this line,
+       and dotenv fills in any key that is absent from process.env -- so a developer with
+       canvasBaseUri in their own .env got it back, and since it wins over the domain on the
+       session, the endpoint called that host instead of the stub below. An empty value is
+       present, so dotenv leaves it alone, and it is falsy, so the code reads it as unset. */
+    process.env.canvasBaseUri = '';
 
     const { server } = require(path.join(ROOT, 'app.js'));
     const db = require(path.join(ROOT, 'db'));
