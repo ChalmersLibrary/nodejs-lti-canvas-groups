@@ -9,22 +9,18 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const sqlite3 = require('sqlite3');
+const tmpDb = require('./helpers/tmpdb');
 
 const ROOT = path.join(__dirname, '..');
-const DB = path.join(__dirname, 'pre-primary-key-db.sqlite3');
+const DB = tmpDb('pre-primary-key-db.sqlite3');
 
 const run = (db, sql, params = []) => new Promise((res, rej) => db.run(sql, params, function (e) { e ? rej(e) : res(this); }));
 const all = (db, sql, params = []) => new Promise((res, rej) => db.all(sql, params, (e, r) => e ? rej(e) : res(r)));
 
 test('a database from before the primary keys migrates cleanly', async (t) => {
-    for (const suffix of ['', '-shm', '-wal']) {
-        try { fs.unlinkSync(DB + suffix); } catch { /* not there */ }
-    }
-
     const old = new sqlite3.Database(DB);
     await run(old, 'PRAGMA journal_mode=WAL');
 

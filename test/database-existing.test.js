@@ -6,9 +6,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const sqlite3 = require('sqlite3');
+const tmpDb = require('./helpers/tmpdb');
 
 const ROOT = path.join(__dirname, '..');
-const DB = path.join(__dirname, 'existing-db.sqlite3');
+const DB = tmpDb('existing-db.sqlite3');
 
 const run = (db, sql, params = []) => new Promise((res, rej) => db.run(sql, params, function (e) { e ? rej(e) : res(this); }));
 const all = (db, sql, params = []) => new Promise((res, rej) => db.all(sql, params, (e, r) => e ? rej(e) : res(r)));
@@ -17,7 +18,6 @@ test('a database from the previous version still works', async (t) => {
     /* Build it the way the old code left it: copied from the template, then the old DDL
        and the old INSERT OR REPLACE statements. */
     for (const suffix of ['', '-shm', '-wal']) {
-        try { fs.unlinkSync(DB + suffix); } catch { /* not there */ }
         fs.copyFileSync(path.join(ROOT, 'db', 'tokens_template.sqlite3') + suffix, DB + suffix);
     }
 

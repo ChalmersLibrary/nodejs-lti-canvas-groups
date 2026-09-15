@@ -9,12 +9,12 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
+const tmpDb = require('./helpers/tmpdb');
 
 const ROOT = path.join(__dirname, '..');
-const DB = path.join(__dirname, 'self-signup-api-db.sqlite3');
+const DB = tmpDb('self-signup-api-db.sqlite3');
 
 const COURSE = 29889;
 const CATEGORY = 15207;
@@ -49,10 +49,6 @@ const canvasServer = http.createServer((req, res) => {
 });
 
 test('the anonymous self signup endpoint', async (t) => {
-    for (const suffix of ['', '-shm', '-wal']) {
-        try { fs.unlinkSync(DB + suffix); } catch { /* not there */ }
-    }
-
     await new Promise((r) => canvasServer.listen(0, r));
     const canvasBase = `http://127.0.0.1:${canvasServer.address().port}`;
     const port = 4500 + (process.pid % 90);

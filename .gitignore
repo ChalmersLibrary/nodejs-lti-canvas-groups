@@ -6,6 +6,4 @@ log/logfiles/
 .env
 mock-lti.json
 *.bak
-test/*.sqlite3*
-test/*mock-lti.json
 CLAUDE.local.md

@@ -11,13 +11,13 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { signedLaunch } = require('./helpers/lti');
+const tmpDb = require('./helpers/tmpdb');
 
 const ROOT = path.join(__dirname, '..');
-const DB = path.join(__dirname, 'launch-signature-db.sqlite3');
+const DB = tmpDb('launch-signature-db.sqlite3');
 const SECRET = 's3cret';
 const TUNNEL = 'tunnel.example.com';
 
@@ -48,10 +48,6 @@ const post = async (port, headers, payload) => (await request(port, headers, pay
 const postWithCookie = (port, headers, payload) => request(port, headers, payload);
 
 test('a launch signed for an https tunnel validates when trust proxy is on', async (t) => {
-    for (const suffix of ['', '-shm', '-wal']) {
-        try { fs.unlinkSync(DB + suffix); } catch { /* not there */ }
-    }
-
     const port = 3700 + (process.pid % 200);
 
     Object.assign(process.env, {

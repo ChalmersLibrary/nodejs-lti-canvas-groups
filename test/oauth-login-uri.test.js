@@ -13,10 +13,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const tmpDb = require('./helpers/tmpdb');
 
 const ROOT = path.join(__dirname, '..');
 
-process.env.DB_PATH = path.join(__dirname, 'oauth-login-uri-db.sqlite3');
+process.env.DB_PATH = tmpDb('oauth-login-uri-db.sqlite3');
 process.env.oauthClientId = '10000001';
 process.env.oauthClientState = 'teststate';
 process.env.WEBSITE_HOSTNAME = 'localhost';

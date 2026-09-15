@@ -7,13 +7,13 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { signedLaunch, Jar } = require('./helpers/lti');
+const tmpDb = require('./helpers/tmpdb');
 
 const ROOT = path.join(__dirname, '..');
-const DB = path.join(__dirname, 'csv-export-db.sqlite3');
+const DB = tmpDb('csv-export-db.sqlite3');
 const SECRET = 's3cret';
 
 /* One group with five users, each a case the mapping has to get right. */
@@ -51,10 +51,6 @@ const canvasServer = http.createServer((req, res) => {
 });
 
 test('the Zoom export writes addresses Zoom can match', async (t) => {
-    for (const suffix of ['', '-shm', '-wal']) {
-        try { fs.unlinkSync(DB + suffix); } catch { /* not there */ }
-    }
-
     await new Promise((r) => canvasServer.listen(0, r));
     const canvasBase = `http://127.0.0.1:${canvasServer.address().port}`;
     const port = 4300 + (process.pid % 90);

@@ -10,13 +10,13 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { signedLaunch } = require('./helpers/lti');
+const tmpDb = require('./helpers/tmpdb');
 
 const ROOT = path.join(__dirname, '..');
-const DB = path.join(__dirname, 'debug-log-db.sqlite3');
+const DB = tmpDb('debug-log-db.sqlite3');
 const SECRET = 's3cret';
 
 const PERSONNUMMER = '197503185170';
@@ -25,10 +25,6 @@ const LOGIN_ID = 'roljoh@chalmers.se';
 const FULL_NAME = 'Rolf Johansson';
 
 test('debug logging redacts the sensitive launch fields', async (t) => {
-    for (const suffix of ['', '-shm', '-wal']) {
-        try { fs.unlinkSync(DB + suffix); } catch { /* not there */ }
-    }
-
     const port = 4100 + (process.pid % 90);
 
     Object.assign(process.env, {

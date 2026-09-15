@@ -7,6 +7,7 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const path = require('node:path');
 const { signLaunch, launchBody: buildLaunchBody, Jar } = require('./helpers/lti');
+const tmpDb = require('./helpers/tmpdb');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -113,11 +114,9 @@ test('LTI launch, OAuth, groups view and exports', async (t) => {
 
   appPort = 3200 + (process.pid % 300);
 
-  /* Never touch db/tokens.sqlite3; that is the database being developed against. */
-  const testDbPath = path.join(__dirname, 'test-tokens.sqlite3');
-  for (const suffix of ['', '-shm', '-wal']) {
-    try { require('node:fs').unlinkSync(testDbPath + suffix); } catch { /* not there */ }
-  }
+  /* Outside the working copy, and never db/tokens.sqlite3, which is the database being
+     developed against. */
+  const testDbPath = tmpDb('test-tokens.sqlite3');
 
   Object.assign(process.env, {
     DB_PATH: testDbPath,

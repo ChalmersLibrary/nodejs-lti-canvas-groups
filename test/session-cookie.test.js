@@ -10,19 +10,15 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const path = require('node:path');
 const { signedLaunch } = require('./helpers/lti');
+const tmpDb = require('./helpers/tmpdb');
 
 const ROOT = path.join(__dirname, '..');
-const DB = path.join(__dirname, 'session-cookie-db.sqlite3');
+const DB = tmpDb('session-cookie-db.sqlite3');
 const CONSUMER_SECRET = 's3cret';
 
 test('the production session cookie is Secure, SameSite=None and Partitioned', async (t) => {
-    for (const suffix of ['', '-shm', '-wal']) {
-        try { fs.unlinkSync(DB + suffix); } catch { /* not there */ }
-    }
-
     const port = 3600 + (process.pid % 300);
 
     Object.assign(process.env, {

@@ -14,17 +14,15 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
+const tmpDb = require('./helpers/tmpdb');
 
 const ROOT = path.join(__dirname, '..');
-const DB = path.join(__dirname, 'session-cookie-local-db.sqlite3');
-/* Never the file in the project root: that is the one someone is developing against. */
-const MOCK = path.join(__dirname, 'session-cookie-local-mock-lti.json');
+const DB = tmpDb('session-cookie-local-db.sqlite3');
+/* Outside the working copy, and never the file in the project root, which is the one someone
+   is developing against. MOCK_LTI_PATH is what points the application at it. */
+const MOCK = tmpDb('session-cookie-local-mock-lti.json');
 
 test('local development with mock-lti.json keeps one session across requests', async (t) => {
-    for (const suffix of ['', '-shm', '-wal']) {
-        try { fs.unlinkSync(DB + suffix); } catch { /* not there */ }
-    }
-
     fs.writeFileSync(MOCK, JSON.stringify({
         context_id: 'ctx-mock',
         context_title: 'Mockkurs',
